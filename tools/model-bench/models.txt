@@ -1,0 +1,38 @@
+# Candidate local models for ~8 GB VRAM (RTX 4060 Laptop 8 GB in this setup).
+# One model per line. `#` starts a comment. Pull them yourself or use --pull.
+#
+# Rule of thumb at Q4: 3-4B models fit with room for context; 7-8B models fit
+# tightly (~5 GB) and leave little VRAM for long contexts; 12B+ spill to CPU.
+# Speed on this GPU: roughly 250-350 tok/s (0.1-1B), 60-100 (3-4B),
+# 30-50 (7-8B) for decode, before any context or thermal throttling.
+
+# Small / fast baselines
+smollm2:360m
+qwen2.5:1.5b
+llama3.2:1b
+gemma3:1b
+
+# 3-4B: usually the best quality-per-second on 8 GB
+llama3.2:3b
+qwen2.5:3b
+gemma3:4b
+phi4-mini:3.8b
+qwen3:4b
+granite3.3:2b
+
+# 7-8B: better quality, tight fit, slower
+qwen2.5:7b
+llama3.1:8b
+mistral:7b
+deepseek-r1:7b
+qwen3:8b
+granite3.3:8b
+
+# Code-specialised
+qwen2.5-coder:3b
+qwen2.5-coder:7b
+codellama:7b
+
+# Larger: expect CPU spill on 8 GB; useful as a quality ceiling only
+gemma3:12b
+qwen3:14b

@@ -33,6 +33,11 @@ claude-things/
 │       ├── test-completion.sh # Drives the bash completion without a tty
 │       ├── install.sh         # Install ol into ~/bin and add it to PATH
 │       └── README.md          # Human-readable docs
+│   └── model-bench/           # Local model speed vs quality harness
+│       ├── bench.py           # CLI: speed runs, quality suite, reports
+│       ├── tasks.py           # Deterministic tasks and graders
+│       ├── models.txt         # Suggested models for ~8 GB VRAM
+│       └── README.md          # Methodology and usage
 └── .claude/                   # Active Claude Code files (symlinks into assets)
 ```
 
@@ -51,6 +56,7 @@ Then restart Claude Code.
 | image-generation | [`comfyui-prompt`](image-generation/comfyui-prompt/) | Build and run ComfyUI image-generation prompts from natural language |
 | code-quality | [`code-smells`](code-quality/code-smells/) | Catalogue of Martin Fowler's 24 code smells, with symptoms and treatments |
 | tools | [`ol`](tools/ol/) | Ollama agent launcher that syncs itself from the remote repo, with bash/zsh tab completion |
+| tools | [`model-bench`](tools/model-bench/) | Dependency-free speed vs quality harness for trialling local Ollama models |
 
 ## Adding a new item
 
