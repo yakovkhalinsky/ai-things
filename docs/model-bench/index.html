@@ -66,6 +66,155 @@
                         <code>report.csv</code>, and the raw response for every task.</li>
                 </ul>
 
+                <h2>What's in the suite</h2>
+                <p>
+                    Eight tasks run in <code>--suite quick</code>; <code>--suite full</code>
+                    adds seven more. Every grader is deterministic — there is no LLM judge —
+                    and code tasks are executed, not inspected.
+                </p>
+
+                <h3>Speed benchmark</h3>
+                <p>
+                    Three prompt sizes — <code>short</code> (~10 tokens),
+                    <code>medium</code> (~500), and <code>long</code> (~2k) — after a
+                    cold load, a discarded warmup, and <code>--repeats</code> runs per case
+                    (default 3). The report shows median decode tok/s, prefill tok/s, TTFT,
+                    and the separate cold-load time. Each request is nonce-tagged so
+                    Ollama's prefix cache cannot fake prefill speed.
+                </p>
+
+                <h3>Quick suite (8 tasks)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Task</th><th>What it asks</th><th>How it is graded</th></tr></thead>
+<tbody>
+<tr><td><code>json_basic</code></td><td>Flat JSON object for Ada Lovelace: <code>name</code>, <code>age=36</code>, three <code>fields</code>.</td><td>Parses the first JSON value; checks exact keys, types, and values.</td></tr>
+<tr><td><code>instr_words</code></td><td>Explain recursion in ≤25 words, one line, no code or list.</td><td>One line, 5–25 words, mentions recursion, no fence/list.</td></tr>
+<tr><td><code>instr_bullets</code></td><td>Exactly three unit-test benefits, each starting <code>- </code> and ≤8 words.</td><td>Exact line count, prefix, and per-line word cap.</td></tr>
+<tr><td><code>instr_prime</code></td><td>Exactly two primes, comma-separated, nothing else.</td><td>Full-output shape plus a primality check.</td></tr>
+<tr><td><code>code_fizzbuzz</code></td><td><code>fizzbuzz(n)</code> returning Fizz/Buzz/FizzBuzz strings.</td><td>Generated Python executed against unit tests.</td></tr>
+<tr><td><code>reason_math</code></td><td>Packs of 6, buy 4, give 6 away, split three ways.</td><td>Last number in the answer must be 6.</td></tr>
+<tr><td><code>reason_mc</code></td><td>Which statement must be true about roses and tulips?</td><td>Last standalone letter must be D.</td></tr>
+<tr><td><code>extract_invoice</code></td><td>JSON fields from a messy invoice.</td><td>Vendor, invoice number, total, and ISO due date checks.</td></tr>
+</tbody>
+</table>
+</div>
+
+                <details>
+                    <summary>Full suite adds 7 tasks</summary>
+                    <p class="muted">
+                        The full suite includes the quick tasks plus these.
+                        <code>webapp_snake</code> carries weight 2; everything else is
+                        weight 1.
+                    </p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Task</th><th>What it asks</th><th>How it is graded</th></tr></thead>
+<tbody>
+<tr><td><code>json_nested</code></td><td>Nested order object with booleans, numbers, and item arrays.</td><td>Nested type, shape, and value checks.</td></tr>
+<tr><td><code>code_slugify</code></td><td><code>slugify(s)</code> handling punctuation, runs, and empty strings.</td><td>Executed against edge-case unit tests.</td></tr>
+<tr><td><code>code_bugfix</code></td><td>Fix <code>unique()</code> so it preserves first-occurrence order.</td><td>Executed order-preservation tests.</td></tr>
+<tr><td><code>reason_logic</code></td><td>Three people, three pets: who owns the fish?</td><td>Final line must name Ana and the fish.</td></tr>
+<tr><td><code>summarize_facts</code></td><td>≤30-word summary mentioning ARPANET and 1969.</td><td>Word cap plus both required facts.</td></tr>
+<tr><td><code>sql_top_customers</code></td><td>Top two customers by total order amount.</td><td>SQL executed against a seeded SQLite database.</td></tr>
+<tr><td><code>webapp_snake</code></td><td>Complete single-file Snake game.</td><td>Structure and inline JS syntax; optional headless-browser run.</td></tr>
+</tbody>
+</table>
+</div>
+                </details>
+
+                <details>
+                    <summary>Exact prompts</summary>
+                    <p class="muted">
+                        The literal text sent to <code>/api/generate</code>. Tasks with a
+                        format hint also send <code>format=json</code>.
+                    </p>
+<h3>JSON</h3>
+<h4><code>json_basic</code> <span class="muted">quick · format=json · 200 tokens</span></h4>
+<pre class="prompt"><code>Return ONLY a JSON object (no markdown, no prose) describing Ada Lovelace with exactly these keys: &quot;name&quot; (string), &quot;age&quot; (integer, 36), &quot;fields&quot; (array of exactly 3 strings).</code></pre>
+<h4><code>json_nested</code> <span class="muted">full · format=json · 300 tokens</span></h4>
+<pre class="prompt"><code>Return ONLY a JSON object with these keys: &quot;order_id&quot; (the string &quot;A-1042&quot;), &quot;paid&quot; (boolean true), &quot;items&quot; (array of exactly 2 objects, each with a &quot;sku&quot; string and a &quot;qty&quot; integer), and &quot;total&quot; (the number 59.5).</code></pre>
+<h3>Instruction following</h3>
+<h4><code>instr_words</code> <span class="muted">quick · 120 tokens</span></h4>
+<pre class="prompt"><code>Explain what recursion is in at most 25 words. Do not use code, bullet points, or a preamble. Answer on a single line.</code></pre>
+<h4><code>instr_bullets</code> <span class="muted">quick · 150 tokens</span></h4>
+<pre class="prompt"><code>List exactly 3 benefits of writing unit tests. Output only three lines, each starting with &#x27;- &#x27; and no longer than 8 words. No heading.</code></pre>
+<h4><code>instr_prime</code> <span class="muted">quick · 60 tokens</span></h4>
+<pre class="prompt"><code>Give exactly two examples of a prime number, separated by a comma. Output nothing else: no words, no explanation.</code></pre>
+<h3>Code</h3>
+<h4><code>code_fizzbuzz</code> <span class="muted">quick · 350 tokens</span></h4>
+<pre class="prompt"><code>Write a Python function `fizzbuzz(n)` that returns a list of strings for the integers 1..n inclusive: &quot;FizzBuzz&quot; if divisible by 15, &quot;Fizz&quot; if divisible by 3, &quot;Buzz&quot; if divisible by 5, otherwise the number as a string. Return only a Python code block.</code></pre>
+<h4><code>code_slugify</code> <span class="muted">full · 350 tokens</span></h4>
+<pre class="prompt"><code>Write a Python function `slugify(s)` that lowercases the string, replaces every run of non-alphanumeric characters with a single &#x27;-&#x27;, and strips leading/trailing &#x27;-&#x27;. Return only a Python code block.</code></pre>
+<h4><code>code_bugfix</code> <span class="muted">full · 400 tokens</span></h4>
+<pre class="prompt"><code>This function should return the unique items in first-occurrence order, but the order is random:
+
+```python
+def unique(items):
+    return list(set(items))
+```
+
+Return only a corrected Python code block that keeps the same name and signature.</code></pre>
+<h4><code>sql_top_customers</code> <span class="muted">full · 250 tokens</span></h4>
+<pre class="prompt"><code>Given this SQLite schema:
+  customers(id INTEGER PRIMARY KEY, name TEXT)
+  orders(id INTEGER PRIMARY KEY, customer_id INTEGER, amount REAL)
+
+Write one SQL query returning the name and total order amount for the two customers with the highest total amount, highest first. Return only the SQL query.</code></pre>
+<h3>Reasoning</h3>
+<h4><code>reason_math</code> <span class="muted">quick · 300 tokens</span></h4>
+<pre class="prompt"><code>A shop sells pencils in packs of 6. Maya buys 4 packs and gives 6 pencils to her brother. She then splits the remaining pencils equally among herself and 2 friends. How many pencils does each person get? Answer with a single number and nothing else.</code></pre>
+<h4><code>reason_mc</code> <span class="muted">quick · 300 tokens</span></h4>
+<pre class="prompt"><code>All roses in the garden are red. Some red flowers are tulips. Which statement MUST be true?
+A) All tulips are roses
+B) Some roses are tulips
+C) No roses are tulips
+D) Some flowers in the garden are red
+Reply with the single letter of the correct answer and nothing else.</code></pre>
+<h4><code>reason_logic</code> <span class="muted">full · 300 tokens</span></h4>
+<pre class="prompt"><code>Three people - Ana, Ben and Cleo - each own a different pet: a cat, a dog and a fish. Ana does not own the cat. Ben owns the dog. Who owns the fish? End your answer with one line naming the owner.</code></pre>
+<h3>Extraction</h3>
+<h4><code>extract_invoice</code> <span class="muted">quick · format=json · 250 tokens</span></h4>
+<pre class="prompt"><code>Extract fields from the invoice below and return ONLY a JSON object with keys &quot;vendor&quot; (string), &quot;invoice_no&quot; (string), &quot;total&quot; (number, no currency symbol) and &quot;due_date&quot; (string in YYYY-MM-DD form).
+
+INVOICE - Acme Widgets Ltd
+Inv #: INV-2024-0917
+Bill to: Northwind Traders
+Widgets (x40) ........ $1,120.00
+Shipping ............. $164.50
+TOTAL DUE: $1,284.50
+Payment due by 15 March 2025.</code></pre>
+<h3>Summarisation</h3>
+<h4><code>summarize_facts</code> <span class="muted">full · 150 tokens</span></h4>
+<pre class="prompt"><code>Summarize the text below in at most 30 words. You must mention ARPANET and 1969. Output prose only, no list.
+
+The Advanced Research Projects Agency Network (ARPANET) was the first wide-area packet-switching network. Its first successful message was sent in 1969 between two computers at UCLA and Stanford. It later became the technical foundation of the Internet.</code></pre>
+<h3>Webapp</h3>
+<h4><code>webapp_snake</code> <span class="muted">full · 8192 ctx · 4096 tokens · weight 2.0</span></h4>
+<pre class="prompt"><code>Build a complete, playable Snake game as a single self-contained HTML file.
+
+Requirements:
+- One file: HTML with inline &lt;style&gt; and &lt;script&gt;. No external libraries, fonts, or images.
+- Render the board on a &lt;canvas&gt; (about 400x400 pixels).
+- 20x20 grid. The snake starts length 3 near the centre, moving right.
+- Move on a fixed tick of about 8-10 cells per second, not on key repeat.
+- Arrow keys and WASD change direction. Ignore a 180-degree reversal.
+- Food appears on a random free cell. Eating it grows the snake by one cell and increments the score.
+- Show the current score on the page.
+- Game over when the snake hits a wall or its own body. Show a game-over message and allow restart (a button and/or a key).
+- Dark theme, readable at 900x700.
+
+Return only the complete HTML file in a single ```html code block. No explanations.
+</code></pre>
+                </details>
+
+                <p class="muted">
+                    Quality is a weighted score: most tasks are pass/fail,
+                    <code>webapp_snake</code> earns partial credit, and a task that hits its
+                    token budget is failed. With <code>--browser</code>, the Snake runtime
+                    checks make up 60% of that task's score.
+                </p>
+
                 <h2>Requirements</h2>
                 <ul>
                     <li>Ollama reachable at <code>http://localhost:11434</code>; honours
