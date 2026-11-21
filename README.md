@@ -2,6 +2,8 @@
 
 A catalogue of Claude Code primitives — skills, commands, agents, prompts, and MCP patterns — grouped by category and asset name so it's easy to browse and reuse.
 
+**Website:** <https://yakov.khalinsky.com/ai-things/> — one page per asset.
+
 ## Structure
 
 Each top-level folder is a **category**. Inside, each subfolder is a self-contained **asset** that owns all of its Claude Code primitives.

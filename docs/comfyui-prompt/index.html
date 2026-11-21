@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>comfyui-prompt — ai-things</title>
+    <meta name="description" content="A Claude Code skill and slash commands that turn natural-language image requests into ComfyUI API graphs, submit them, and wait for the render.">
+    <meta name="theme-color" content="#0a120f">
+    <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../assets/app.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="../">
+                <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+                    <rect x="4" y="6" width="24" height="5" rx="2.5" fill="currentColor"/>
+                    <rect x="4" y="14" width="17" height="5" rx="2.5" fill="currentColor" opacity=".72"/>
+                    <rect x="4" y="22" width="21" height="5" rx="2.5" fill="currentColor" opacity=".45"/>
+                </svg>
+                ai-things
+            </a>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="../">Catalogue</a>
+                <a href="https://github.com/yakovkhalinsky/ai-things">GitHub</a>
+                <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <a href="../">← Catalogue</a>
+                <span class="sep">/</span>
+                <span>comfyui-prompt</span>
+            </nav>
+
+            <header class="asset-header">
+                <div class="chips">
+                    <span class="chip accent">Skill + 2 commands</span>
+                    <span class="chip">image-generation</span>
+                    <span class="chip plain">v2.1.0</span>
+                </div>
+                <h1>comfyui-prompt</h1>
+                <p class="tagline">
+                    Describe an image; get a valid ComfyUI graph, submitted and polled to
+                    completion.
+                </p>
+            </header>
+
+            <div class="asset-body">
+                <h2>What it does</h2>
+                <ul>
+                    <li>Builds a minimal ComfyUI API graph from a description, or patches an
+                        existing workflow template.</li>
+                    <li>Submits the prompt to a running ComfyUI server and polls the
+                        queue/history until the job finishes.</li>
+                    <li>Remembers the last seed and lets you reuse, change, or randomise it.</li>
+                    <li>Ships a <code>z-image-turbo</code> workflow as a working starting
+                        point.</li>
+                </ul>
+
+                <h2>Requirements</h2>
+                <ul>
+                    <li>Claude Code launched from this project directory.</li>
+                    <li>A ComfyUI server at <code>http://localhost:8188</code>, or a different
+                        host configured with <code>COMFYUI_BASE_URL</code> in
+                        <code>.env.local</code>.</li>
+                    <li>The model files for the bundled template (below).</li>
+                </ul>
+
+                <h3>Model files for <code>z-image-turbo</code></h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>File</th><th>What it is</th><th>Where to put it</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>z_image_turbo_bf16.safetensors</code></td>
+                                <td>AuraFlow / Lumina2-style turbo diffusion model</td>
+                                <td><code>models/diffusion_models/</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>ae.safetensors</code></td>
+                                <td>Autoencoder used by the turbo model</td>
+                                <td><code>models/vae/</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>qwen_3_4b.safetensors</code></td>
+                                <td>Qwen CLIP text encoder</td>
+                                <td><code>models/clip/</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="muted">
+                    Paths are relative to the ComfyUI root. If your filenames differ, edit
+                    <code>workflows/z-image-turbo.json</code> or tell the skill which model
+                    names to use.
+                </p>
+
+                <h2>Install</h2>
+                <ol>
+                    <li>Install ComfyUI from <a href="https://comfy.org/download">comfy.org/download</a>
+                        or the <a href="https://github.com/comfyanonymous/ComfyUI">GitHub repo</a>.</li>
+                    <li>Put the three model files in the folders shown above.</li>
+                    <li>If ComfyUI is not on localhost, create <code>.env.local</code> at the
+                        project root with the server URL.</li>
+                    <li>Open this project in Claude Code and restart it so the local skill and
+                        commands are registered.</li>
+                </ol>
+
+                <pre><code># .env.local at the project root (optional, for a remote ComfyUI)
+COMFYUI_BASE_URL=http://your-comfyui-host:8188</code></pre>
+                <p class="muted">
+                    Do not commit <code>.env.local</code>.
+                </p>
+
+                <h2>Usage</h2>
+                <pre><code>/comfyui-prompt a polar bear in a 1950s diner eating a burger and fries</code></pre>
+                <p>Or ask in plain language:</p>
+                <div class="callout">
+                    <p>Generate a polar bear in a 1950s diner using the z-image-turbo template.</p>
+                </div>
+                <p>
+                    The companion <code>/comfyui-serve-output</code> command starts an opt-in
+                    local file server for browsing generated outputs.
+                </p>
+
+                <h2>Good to know</h2>
+                <ul>
+                    <li>The bundled template expects the three files above; swap in your own
+                        names if your install differs.</li>
+                    <li>The skill builds the graph and talks HTTP directly — no ComfyUI Python
+                        environment is imported.</li>
+                    <li>Outputs land in <code>examples/</code>, which is ignored by git.</li>
+                </ul>
+
+                <h2>Source</h2>
+                <ul class="link-list">
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/image-generation/comfyui-prompt/README.md">README</a>
+                        <span class="path">image-generation/comfyui-prompt/README.md</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/image-generation/comfyui-prompt/SKILL.md">SKILL.md</a>
+                        <span class="path">the skill definition</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/image-generation/comfyui-prompt/comfyui-prompt.md">comfyui-prompt.md</a>
+                        <span class="path">the /comfyui-prompt slash command</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/image-generation/comfyui-prompt/command-serve-output.md">command-serve-output.md</a>
+                        <span class="path">the /comfyui-serve-output slash command</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/image-generation/comfyui-prompt/workflows/z-image-turbo.json">z-image-turbo.json</a>
+                        <span class="path">the bundled workflow template</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>Part of <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a></p>
+            <p><a href="../">All assets</a> · <a href="https://github.com/yakovkhalinsky/ai-things">Source on GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>

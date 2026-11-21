@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>model-bench — ai-things</title>
+    <meta name="description" content="A dependency-free harness for trialling local Ollama models on speed and quality: cold load, throughput, 14 deterministic tasks, and reports.">
+    <meta name="theme-color" content="#0a120f">
+    <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../assets/app.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="../">
+                <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+                    <rect x="4" y="6" width="24" height="5" rx="2.5" fill="currentColor"/>
+                    <rect x="4" y="14" width="17" height="5" rx="2.5" fill="currentColor" opacity=".72"/>
+                    <rect x="4" y="22" width="21" height="5" rx="2.5" fill="currentColor" opacity=".45"/>
+                </svg>
+                ai-things
+            </a>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="../">Catalogue</a>
+                <a href="https://github.com/yakovkhalinsky/ai-things">GitHub</a>
+                <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <a href="../">← Catalogue</a>
+                <span class="sep">/</span>
+                <span>model-bench</span>
+            </nav>
+
+            <header class="asset-header">
+                <div class="chips">
+                    <span class="chip accent">CLI</span>
+                    <span class="chip">tools</span>
+                    <span class="chip plain">stdlib only</span>
+                </div>
+                <h1>model-bench</h1>
+                <p class="tagline">
+                    Trial local models on this machine: how fast they are, how good they are,
+                    and which one is worth using.
+                </p>
+            </header>
+
+            <div class="asset-body">
+                <h2>What it does</h2>
+                <ul>
+                    <li>Measures cold load, time-to-first-token, prefill and decode throughput
+                        at short, medium, and long prompt sizes — after a discarded warmup.</li>
+                    <li>Runs 14 deterministic quality tasks: JSON, instruction following,
+                        Python code against unit tests, SQL against SQLite, reasoning,
+                        extraction, and summarisation.</li>
+                    <li>Reports VRAM and GPU offload, marks the Pareto frontier, and scores
+                        speed vs quality with configurable weights.</li>
+                    <li>Writes <code>report.md</code>, <code>results.json</code>,
+                        <code>report.csv</code>, and the raw response for every task.</li>
+                </ul>
+
+                <h2>Requirements</h2>
+                <ul>
+                    <li>Ollama reachable at <code>http://localhost:11434</code>; honours
+                        <code>OLLAMA_HOST</code>.</li>
+                    <li>Python 3.10+. Standard library only — no venv, no pip install.</li>
+                    <li>Optional: <code>nvidia-smi</code> for the GPU line, and
+                        <code>ollama</code> on PATH for <code>--pull</code>.</li>
+                </ul>
+
+                <h2>Usage</h2>
+                <pre><code>./bench.py --self-test                                   # check the graders
+./bench.py --suggest                                     # candidates for this GPU
+./bench.py -m qwen3:4b -m llama3.2:3b                    # compare two models
+./bench.py -m qwen2.5-coder:7b --pull --suite full       # pull + full suite
+./bench.py --installed --speed-only --no-think           # throughput only</code></pre>
+
+                <h3>What you get</h3>
+                <p>A console summary, plus a markdown report and machine-readable results:</p>
+                <pre><code>model         quality  decode t/s  prefill t/s  load s  vram MiB  gpu %  score
+llama3.2:1b        88%       121.1        12757    2.60      1448    100   89.5
+qwen2.5:1.5b       75%       130.9         7902    3.26      1115    100   85.0</code></pre>
+                <p class="muted">
+                    Example run on an RTX 4060 Laptop 8&nbsp;GB. Your numbers will differ.
+                </p>
+
+                <h2>How the numbers work</h2>
+                <ul>
+                    <li><strong>Decode t/s</strong> is generation throughput; <strong>prefill
+                        t/s</strong> is prompt processing; <strong>load s</strong> is the cold
+                        load of a model that was just unloaded.</li>
+                    <li>Each request carries a unique tag, because Ollama otherwise serves
+                        repeated identical prompts from its prefix cache and reports
+                        meaningless prefill rates.</li>
+                    <li>Speed is normalised to the fastest model <em>in the same run</em>, so
+                        bench the comparison set together.</li>
+                    <li><strong>Quality</strong> is a weighted pass rate. No LLM judge; every
+                        task has a deterministic grader, and <code>--self-test</code> checks
+                        each grader against a reference answer and rejects empty/garbage
+                        output.</li>
+                </ul>
+
+                <h2>Good to know</h2>
+                <div class="callout">
+                    <p>
+                        Code tasks execute model-generated Python in a temporary directory with
+                        a 10-second timeout. That is not a sandbox — only bench models you
+                        trust.
+                    </p>
+                </div>
+                <ul>
+                    <li><code>--suite quick</code> runs 8 tasks; <code>--suite full</code> runs
+                        all 14.</li>
+                    <li>Cloud models work, but their speed is network-bound. Don't mix them into
+                        a local comparison.</li>
+                    <li>Use <code>--no-think</code> for thinking models when you care about raw
+                        throughput.</li>
+                    <li><code>models.txt</code> carries a suggested shortlist for ~8&nbsp;GB
+                        VRAM; it is a suggestion list, not an auto-install.</li>
+                </ul>
+
+                <h2>Source</h2>
+                <ul class="link-list">
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/model-bench/README.md">README</a>
+                        <span class="path">tools/model-bench/README.md</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/model-bench/bench.py">bench.py</a>
+                        <span class="path">CLI, speed measurement, scoring, reports</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/model-bench/tasks.py">tasks.py</a>
+                        <span class="path">quality tasks and deterministic graders</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/model-bench/models.txt">models.txt</a>
+                        <span class="path">suggested models for this GPU class</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>Part of <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a></p>
+            <p><a href="../">All assets</a> · <a href="https://github.com/yakovkhalinsky/ai-things">Source on GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>

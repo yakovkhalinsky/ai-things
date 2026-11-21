@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ai-things — Claude Code primitives and local AI tooling</title>
+    <meta name="description" content="A catalogue of Claude Code skills, slash commands, and local AI tooling: code-smells, comfyui-prompt, ol, and model-bench.">
+    <meta name="theme-color" content="#0a120f">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+    <script src="assets/app.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="./">
+                <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+                    <rect x="4" y="6" width="24" height="5" rx="2.5" fill="currentColor"/>
+                    <rect x="4" y="14" width="17" height="5" rx="2.5" fill="currentColor" opacity=".72"/>
+                    <rect x="4" y="22" width="21" height="5" rx="2.5" fill="currentColor" opacity=".45"/>
+                </svg>
+                ai-things
+            </a>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="./" aria-current="page">Catalogue</a>
+                <a href="https://github.com/yakovkhalinsky/ai-things">GitHub</a>
+                <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero">
+            <div class="container">
+                <p class="eyebrow">Catalogue</p>
+                <h1>ai-things</h1>
+                <p class="tagline">
+                    Claude Code skills, slash commands, and local AI tooling. Each asset is
+                    small, self-contained, and works without a build step.
+                </p>
+                <div class="hero-actions">
+                    <a class="button" href="#assets">Browse the catalogue</a>
+                    <a class="button ghost" href="https://github.com/yakovkhalinsky/ai-things">View on GitHub</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <h2>Use it</h2>
+                <p class="section-note">
+                    Clone once, then install the skills and commands into Claude Code.
+                </p>
+                <pre><code>git clone https://github.com/yakovkhalinsky/ai-things.git
+cd ai-things
+./scripts/install.sh</code></pre>
+                <p class="muted">
+                    The script copies the skills and commands into <code>.claude/</code>;
+                    restart Claude Code afterwards. On systems where the committed symlinks
+                    already work, this step is unnecessary. Tools install independently —
+                    see their pages.
+                </p>
+            </div>
+        </section>
+
+        <div class="container"><hr class="divider"></div>
+
+        <section class="section" id="assets">
+            <div class="container">
+                <h2>Skills &amp; commands</h2>
+                <p class="section-note">Loaded by Claude Code from this project.</p>
+                <div class="grid">
+                    <a class="card" href="code-smells/">
+                        <div class="chips">
+                            <span class="chip accent">Skill + command</span>
+                            <span class="chip">code-quality</span>
+                        </div>
+                        <h3>code-smells</h3>
+                        <p>
+                            Martin Fowler's 24 code smells, with the symptoms to point at and
+                            the refactorings that treat them. A review command reports only
+                            smells it can locate in the code.
+                        </p>
+                        <span class="card-cta">Read more →</span>
+                    </a>
+
+                    <a class="card" href="comfyui-prompt/">
+                        <div class="chips">
+                            <span class="chip accent">Skill + 2 commands</span>
+                            <span class="chip">image-generation</span>
+                        </div>
+                        <h3>comfyui-prompt</h3>
+                        <p>
+                            Turn a natural-language image request into a valid ComfyUI API
+                            graph, submit it, and wait for the render — with workflow
+                            templates and seed reuse.
+                        </p>
+                        <span class="card-cta">Read more →</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
+                <h2>Tools</h2>
+                <p class="section-note">Standalone command-line tools, no agent required.</p>
+                <div class="grid">
+                    <a class="card" href="ol/">
+                        <div class="chips">
+                            <span class="chip accent">CLI</span>
+                            <span class="chip">tools</span>
+                        </div>
+                        <h3>ol</h3>
+                        <p>
+                            A shortcut for launching Ollama-backed agents. Sets the real
+                            context window, passes arguments through untouched, completes
+                            model names, and keeps itself current.
+                        </p>
+                        <span class="card-cta">Read more →</span>
+                    </a>
+
+                    <a class="card" href="model-bench/">
+                        <div class="chips">
+                            <span class="chip accent">CLI</span>
+                            <span class="chip">tools</span>
+                        </div>
+                        <h3>model-bench</h3>
+                        <p>
+                            Compare local models on speed and quality. Cold-load and warm
+                            throughput, 14 deterministic tasks, and a Pareto-ranked report.
+                        </p>
+                        <span class="card-cta">Read more →</span>
+                    </a>
+                </div>
+                <p class="section-note" style="margin-top:1.6rem">
+                    More categories are reserved for <code>agents</code>,
+                    <code>prompts</code>, and <code>mcp</code> patterns.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>Part of <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a></p>
+            <p><a href="https://github.com/yakovkhalinsky/ai-things">Source on GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>

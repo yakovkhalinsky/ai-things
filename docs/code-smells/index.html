@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>code-smells — ai-things</title>
+    <meta name="description" content="A Claude Code skill and slash command for Martin Fowler's 24 code smells: symptoms, refactorings, and a concrete-location-only review.">
+    <meta name="theme-color" content="#0a120f">
+    <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../assets/app.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="../">
+                <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+                    <rect x="4" y="6" width="24" height="5" rx="2.5" fill="currentColor"/>
+                    <rect x="4" y="14" width="17" height="5" rx="2.5" fill="currentColor" opacity=".72"/>
+                    <rect x="4" y="22" width="21" height="5" rx="2.5" fill="currentColor" opacity=".45"/>
+                </svg>
+                ai-things
+            </a>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="../">Catalogue</a>
+                <a href="https://github.com/yakovkhalinsky/ai-things">GitHub</a>
+                <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <a href="../">← Catalogue</a>
+                <span class="sep">/</span>
+                <span>code-smells</span>
+            </nav>
+
+            <header class="asset-header">
+                <div class="chips">
+                    <span class="chip accent">Skill + command</span>
+                    <span class="chip">code-quality</span>
+                    <span class="chip plain">v1.0.0</span>
+                </div>
+                <h1>code-smells</h1>
+                <p class="tagline">
+                    A reference catalogue of the 24 code smells from <em>Refactoring</em>,
+                    2nd edition — and a review command that applies it.
+                </p>
+            </header>
+
+            <div class="asset-body">
+                <h2>What it does</h2>
+                <ul>
+                    <li>Lists every smell from Martin Fowler's <em>Refactoring</em> (2nd ed.),
+                        Chapter 3, in the book's order.</li>
+                    <li>For each one: the symptom you can point at, and the refactorings that
+                        treat it.</li>
+                    <li>Reviews code against the catalogue, reporting only smells with a
+                        concrete location behind them.</li>
+                    <li>Activates on its own when you ask about code quality, or you can run
+                        <code>/code-smells</code> directly.</li>
+                </ul>
+
+                <h2>Install</h2>
+                <pre><code>git clone https://github.com/yakovkhalinsky/ai-things.git
+cd ai-things
+./scripts/install.sh</code></pre>
+                <p class="muted">
+                    Restart Claude Code so the project-local skill and command are
+                    registered.
+                </p>
+
+                <h2>Usage</h2>
+                <pre><code>/code-smells                  # review the current changes
+/code-smells src/             # review a path
+/code-smells feature envy     # look up one smell</code></pre>
+                <p>
+                    Or just ask, for example: <em>“Review this function for code smells.”</em>
+                </p>
+
+                <h2>Good to know</h2>
+                <div class="callout">
+                    <p>
+                        This is not a linter and not a bug detector. Smells are judgement
+                        calls — nothing is broken and the tests may well pass. A small,
+                        stable, rarely-touched function with a long parameter list is often
+                        fine.
+                    </p>
+                </div>
+                <ul>
+                    <li>The symptom text in the skill is a paraphrase for quick reference,
+                        not the book's wording.</li>
+                    <li>The Bloaters / Couplers / Dispensables groupings on many websites
+                        come from refactoring.guru and the first edition — not from the
+                        second.</li>
+                </ul>
+
+                <h2>Source</h2>
+                <ul class="link-list">
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/code-quality/code-smells/README.md">README</a>
+                        <span class="path">code-quality/code-smells/README.md</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/code-quality/code-smells/SKILL.md">SKILL.md</a>
+                        <span class="path">the catalogue and how to apply it</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/code-quality/code-smells/code-smells.md">code-smells.md</a>
+                        <span class="path">the /code-smells slash command</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>Part of <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a></p>
+            <p><a href="../">All assets</a> · <a href="https://github.com/yakovkhalinsky/ai-things">Source on GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>

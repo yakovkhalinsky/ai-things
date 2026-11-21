@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ol — ai-things</title>
+    <meta name="description" content="A tiny shortcut for launching Ollama agents: correct context window, literal argument passthrough, tab completion, and self-updating install.">
+    <meta name="theme-color" content="#0a120f">
+    <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../styles.css">
+    <script src="../assets/app.js" defer></script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <a class="brand" href="../">
+                <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+                    <rect x="4" y="6" width="24" height="5" rx="2.5" fill="currentColor"/>
+                    <rect x="4" y="14" width="17" height="5" rx="2.5" fill="currentColor" opacity=".72"/>
+                    <rect x="4" y="22" width="21" height="5" rx="2.5" fill="currentColor" opacity=".45"/>
+                </svg>
+                ai-things
+            </a>
+            <nav class="site-nav" aria-label="Primary">
+                <a href="../">Catalogue</a>
+                <a href="https://github.com/yakovkhalinsky/ai-things">GitHub</a>
+                <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <a href="../">← Catalogue</a>
+                <span class="sep">/</span>
+                <span>ol</span>
+            </nav>
+
+            <header class="asset-header">
+                <div class="chips">
+                    <span class="chip accent">CLI</span>
+                    <span class="chip">tools</span>
+                    <span class="chip plain">self-updating</span>
+                </div>
+                <h1>ol</h1>
+                <p class="tagline">
+                    One small command in front of <code>ollama launch</code> — with the
+                    context window set correctly and arguments passed through untouched.
+                </p>
+            </header>
+
+            <div class="asset-body">
+                <h2>What it does</h2>
+                <ul>
+                    <li>Launches any Ollama integration: <code>claude</code>,
+                        <code>codex</code>, <code>pi</code>, <code>opencode</code>,
+                        <code>chatgpt</code>, and whatever else <code>ollama launch</code>
+                        supports.</li>
+                    <li>Reads the model's real context window from <code>/api/show</code> and
+                        exports <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code>, so Claude Code
+                        stops assuming 200k.</li>
+                    <li>Passes everything after <code>--</code> (or the first argument starting
+                        with <code>-</code>) to the agent literally: no <code>eval</code>, no
+                        re-splitting, and the agent's exit status becomes <code>ol</code>'s.</li>
+                    <li>Tab completion for bash and zsh: integrations first, then model names
+                        from your default, running models, recently launched models, and local
+                        pulls.</li>
+                    <li>Self-updating: the installed copy syncs from <code>main</code> on every
+                        run, and only replaces itself with a candidate that contains
+                        <code>ollama launch</code> and passes <code>bash -n</code>.</li>
+                </ul>
+
+                <h2>Install</h2>
+                <pre><code>./tools/ol/install.sh</code></pre>
+                <p>
+                    This installs <code>ol</code> into <code>~/bin</code> via a rename,
+                    records <code>~/.ol-version</code>, installs tab completion for your
+                    shell, adds the guarded sourcing line, and adds <code>~/bin</code> to
+                    your PATH if needed.
+                </p>
+                <p class="muted">
+                    Set <code>OL_TARGET</code> to install somewhere else; PATH and completion
+                    setup are then skipped. Installing is a one-time step — after that,
+                    <code>ol</code> keeps itself current.
+                </p>
+
+                <h2>Usage</h2>
+                <pre><code>ol                                   # claude, model from ~/.model
+ol codex                             # another integration
+ol claude gpt-oss:20b                # pick the model
+ol claude -- -p "brief" --output-format json
+ol claude gpt-oss:20b -p "$(cat brief.md)" --output-format json</code></pre>
+
+                <h3>Permissions</h3>
+                <p>
+                    <code>--dangerously-skip-permissions</code> is only added for
+                    <code>claude</code>, and only for a classic interactive launch: stdin is a
+                    terminal and no arguments are passed through. Headless and scripted runs
+                    keep Claude Code's normal permission handling, so
+                    <code>--allowedTools</code>, <code>--disallowedTools</code>, and
+                    <code>--permission-mode</code> mean what they say.
+                </p>
+                <p>
+                    Force it with <code>OL_SKIP_PERMISSIONS=1</code>, or force it off with
+                    <code>OL_SKIP_PERMISSIONS=0</code>.
+                </p>
+
+                <h2>Good to know</h2>
+                <div class="callout">
+                    <p>
+                        <code>ol</code> installs and runs whatever is on <code>main</code> on
+                        every run. The sanity checks blunt accidents such as a truncated
+                        push — they do not protect against malice.
+                    </p>
+                </div>
+                <ul>
+                    <li>Changes ship only once committed and pushed to <code>main</code>.
+                        Uncommitted local edits are replaced in <code>~/bin</code> on the next
+                        run; use <code>OL_SOURCE</code> while developing.</li>
+                    <li>Set <code>OLLAMA_HOST</code> for a remote Ollama, or
+                        <code>OL_NO_UPDATE=1</code> to skip the sync.</li>
+                    <li>The zsh completion is written to the standard pattern but has had less
+                        keystroke testing than the bash one.</li>
+                </ul>
+
+                <h2>Source</h2>
+                <ul class="link-list">
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/ol/README.md">README</a>
+                        <span class="path">tools/ol/README.md</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/ol/ol">ol</a>
+                        <span class="path">the launcher itself</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/ol/install.sh">install.sh</a>
+                        <span class="path">installer, PATH setup, and rc line</span>
+                    </li>
+                    <li>
+                        <a href="https://github.com/yakovkhalinsky/ai-things/tree/main/tools/ol">Completion files</a>
+                        <span class="path">ol-completion.bash, ol-completion.zsh</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>Part of <a href="https://yakov.khalinsky.com">yakov.khalinsky.com</a></p>
+            <p><a href="../">All assets</a> · <a href="https://github.com/yakovkhalinsky/ai-things">Source on GitHub</a></p>
+        </div>
+    </footer>
+</body>
+</html>
