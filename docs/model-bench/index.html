@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>model-bench — ai-things</title>
-    <meta name="description" content="A dependency-free harness for trialling local Ollama models on speed and quality: cold load, throughput, 14 deterministic tasks, and reports.">
+    <meta name="description" content="A dependency-free harness for trialling local Ollama models on speed and quality: cold load, throughput, 15 deterministic tasks, optional browser checks, and reports.">
     <meta name="theme-color" content="#0a120f">
     <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../styles.css">
@@ -62,6 +62,11 @@
                         extraction, summarisation, and a whole-app Snake game.</li>
                     <li>Reports VRAM and GPU offload, marks the Pareto frontier, and scores
                         speed vs quality with configurable weights.</li>
+                    <li>Records model digests and environment details — Python/platform,
+                        GPU driver/CUDA, and selected <code>OLLAMA_*</code> variables — for
+                        reproducibility.</li>
+                    <li>Reports within-case speed variance and an 8-gram repetition ratio,
+                        flagging outputs that are likely looping.</li>
                     <li>Writes <code>report.md</code>, <code>results.json</code>,
                         <code>report.csv</code>, and the raw response for every task.</li>
                 </ul>
@@ -292,7 +297,7 @@ Return only the complete HTML file in a single ```html code block. No explanatio
                 </div>
                 <ul>
                     <li><code>--suite quick</code> runs 8 tasks; <code>--suite full</code> runs
-                        all 14.</li>
+                        all 15.</li>
                     <li><code>--browser</code> adds an opt-in Playwright smoke test for webapp
                         tasks: canvas animation, wall collision, restart, and runtime errors.
                         Without it the webapp grader is static.</li>
@@ -328,15 +333,11 @@ Return only the complete HTML file in a single ```html code block. No explanatio
 
                 <h2>Planned improvements</h2>
                 <p>
-                    Known gaps, roughly in priority order. Items marked done or partial are in
-                    the current release; the tool is still strongest as a per-machine triage
-                    harness.
+                    Known gaps, roughly in priority order. The partial item is partly in the
+                    current release; the rest are planned. The tool is still strongest as a
+                    per-machine triage harness.
                 </p>
                 <ul>
-                    <li><span class="chip accent">done</span> <strong>Reproducibility
-                        metadata</strong> — the report records model digests, and the run
-                        metadata records Python/platform, GPU driver/CUDA, and selected
-                        <code>OLLAMA_*</code> variables.</li>
                     <li><span class="chip">partial</span> <strong>Uncertainty</strong> — speed
                         min/max and within-case CV are reported; quality tasks still run once
                         each.</li>
@@ -348,9 +349,6 @@ Return only the complete HTML file in a single ```html code block. No explanatio
                         garbage.</li>
                     <li><strong>Run comparison</strong> — a <code>--compare results.json</code>
                         mode and a baseline/regression view across runs.</li>
-                    <li><span class="chip accent">done</span> <strong>Degeneration
-                        metric</strong> — an 8-gram repetition ratio is recorded per task, with
-                        <code>max rep</code> in the report and a flag in the console.</li>
                     <li><strong>Composite semantics</strong> — make single-model scores
                         meaningful, or require at least two models for a score.</li>
                     <li><strong>Execution isolation</strong> — run generated code and browser

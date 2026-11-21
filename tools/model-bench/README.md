@@ -232,12 +232,10 @@ the task is actually testing. A grader may return a third element, a score in
 
 ## Planned improvements
 
-Known gaps, roughly in priority order. None are implemented yet; use the tool as
-a per-machine triage harness first.
+Known gaps, roughly in priority order. The partial item is partly in the
+current release; the rest are planned. Use the tool as a per-machine triage
+harness first.
 
-- **Done — reproducibility metadata.** Model digests are in the report;
-  Python/platform, GPU driver/CUDA, and selected `OLLAMA_*` variables are in
-  `results.json`.
 - **Partial — uncertainty.** Speed min/max and within-case CV are reported;
   quality tasks still run once each.
 - **Harder coverage** — repo-level/multi-file coding, multi-turn conversations,
@@ -245,8 +243,6 @@ a per-machine triage harness first.
 - **Adversarial self-test** — fenced, prose-wrapped, truncated, and near-miss
   outputs, not just a reference answer and garbage.
 - **Run comparison** — a `--compare results.json` mode and a baseline view.
-- **Done — degeneration metric.** An 8-gram repetition ratio is recorded per
-  task, with `max rep` in the report and a console flag.
 - **Composite semantics** — make single-model scores meaningful, or require at
   least two models for a score.
 - **Execution isolation** — containerise generated code and browser checks, and
