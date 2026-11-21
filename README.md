@@ -1,4 +1,4 @@
-# claude-things
+# ai-things
 
 A catalogue of Claude Code primitives — skills, commands, agents, prompts, and MCP patterns — grouped by category and asset name so it's easy to browse and reuse.
 
@@ -7,7 +7,7 @@ A catalogue of Claude Code primitives — skills, commands, agents, prompts, and
 Each top-level folder is a **category**. Inside, each subfolder is a self-contained **asset** that owns all of its Claude Code primitives.
 
 ```
-claude-things/
+ai-things/
 ├── image-generation/          # Category
 │   └── comfyui-prompt/      # Asset
 │       ├── README.md          # Human-readable docs

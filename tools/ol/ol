@@ -108,7 +108,7 @@ ol_record() {
 
 ol_self_update() {
   local home="${HOME:-}" tgt="${OL_TARGET:-}" src="${OL_SOURCE:-}"
-  local url="${OL_REMOTE_URL:-https://raw.githubusercontent.com/yakovkhalinsky/claude-things/main/tools/ol/ol}"
+  local url="${OL_REMOTE_URL:-https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/tools/ol/ol}"
   local vf="" vhash="" vsrc="" label="" oldhash="" newhash=""
 
   if [[ "${OL_NO_UPDATE:-0}" == "1" ]]; then
@@ -150,7 +150,7 @@ ol_self_update() {
     label="$url"
     if ! curl -fsSL --connect-timeout 3 --max-time 5 -o "$tmp" -- "$url" 2>/dev/null; then
       rm -f -- "$tmp" 2>/dev/null || true
-      local checkout="${home}/git/claude-things/tools/ol/ol"
+      local checkout="${home}/git/ai-things/tools/ol/ol"
       if [[ -f "$checkout" ]]; then
         src="$checkout"
         label="$checkout"
@@ -308,7 +308,7 @@ ol_completion_sync() {
   #    touches the network, otherwise fetch, and a failed fetch falls back to the
   #    local checkout. Timeouts are tighter than ol's own, so that two syncs in one
   #    run cannot add up to ten seconds.
-  url="${OL_REMOTE_URL:-https://raw.githubusercontent.com/yakovkhalinsky/claude-things/main/tools/ol/ol}"
+  url="${OL_REMOTE_URL:-https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/tools/ol/ol}"
   url="${url%/*}/ol-completion.${suffix}"
 
   # Past the gates, so the attempt is happening: clear the previous verdict and
@@ -332,7 +332,7 @@ ol_completion_sync() {
     label="$url"
     if ! curl -fsSL --connect-timeout 2 --max-time 4 -o "$tmp" -- "$url" 2>/dev/null; then
       rm -f -- "$tmp" 2>/dev/null || true
-      checkout="${home}/git/claude-things/tools/ol/ol-completion.${suffix}"
+      checkout="${home}/git/ai-things/tools/ol/ol-completion.${suffix}"
       if [[ -f "$checkout" ]]; then
         label="$checkout"
         if ! cp -- "$checkout" "$tmp" 2>/dev/null; then

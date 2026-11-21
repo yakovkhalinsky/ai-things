@@ -142,7 +142,7 @@ if grep -qF '${HOME}/bin' "${RC}" 2>/dev/null || grep -qF "${HOME}/bin" "${RC}" 
   echo "~/bin already appears in ${RC}"
 else
   echo "" >> "${RC}"
-  echo "# Added by claude-things/tools/ol/install.sh" >> "${RC}"
+  echo "# Added by ai-things/tools/ol/install.sh" >> "${RC}"
   echo 'export PATH="${HOME}/bin:${PATH}"' >> "${RC}"
   ADDED_HEADER=1
   echo "Added ~/bin to ${RC}"
@@ -157,7 +157,7 @@ elif [[ -z "${COMPLETION_INSTALLED}" ]]; then
 else
   if [[ "${ADDED_HEADER}" == "0" ]]; then
     echo "" >> "${RC}"
-    echo "# Added by claude-things/tools/ol/install.sh" >> "${RC}"
+    echo "# Added by ai-things/tools/ol/install.sh" >> "${RC}"
   fi
   # Guarded: a missing file must not be an error at shell startup.
   printf '[ -r "${HOME}/.ol-completion.%s" ] && . "${HOME}/.ol-completion.%s"\n' \

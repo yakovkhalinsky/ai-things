@@ -19,7 +19,7 @@ Start a lightweight local HTTP server so you can browse example outputs in a bro
 4. Report:
    - The root URL, e.g. `http://localhost:8765/`
    - The URL to the comfyui-prompt examples, e.g. `http://localhost:8765/image-generation/comfyui-prompt/examples/`
-   - How to stop it: `kill $(cat /tmp/claude-things-http.pid)`
+   - How to stop it: `kill $(cat /tmp/ai-things-http.pid)`
 
 ## Notes
 
@@ -38,5 +38,5 @@ Assistant:
 ```
 Local server running at http://localhost:8765/
 Browse examples: http://localhost:8765/image-generation/comfyui-prompt/examples/
-Stop: kill $(cat /tmp/claude-things-http.pid)
+Stop: kill $(cat /tmp/ai-things-http.pid)
 ```
