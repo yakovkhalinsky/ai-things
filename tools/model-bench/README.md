@@ -140,8 +140,9 @@ ranks above one that does not run.
 
 `--browser` adds a Playwright smoke test: load the page in headless Chromium,
 confirm the canvas draws and animates, drive the snake into a wall, and attempt
-a restart. Runtime behaviour carries 60% of the webapp score. The run fails on
-console/page errors. Screenshots land beside the extracted HTML.
+a restart. Runtime behaviour carries 60% of the webapp score, and a console or
+page error zeroes that component entirely: a game that throws is not a
+partially working game. Screenshots land beside the extracted HTML.
 
 The core tool remains stdlib-only; the browser path is optional:
 

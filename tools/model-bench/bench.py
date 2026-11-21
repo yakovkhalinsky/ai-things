@@ -437,10 +437,15 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
                 checks = task.get("browser_checks", [])
                 browser = run_browser_check(task, check_path, model_dir, timeout)
                 if browser["status"] == "ok":
-                    browser_fraction = (
-                        sum(1 for check in checks if browser_check_ok(check, browser["result"]))
-                        / len(checks)
-                    ) if checks else 1.0
+                    if not browser_check_ok("no_errors", browser["result"]):
+                        # A page that throws is not a partially working game.
+                        browser_fraction = 0.0
+                    elif checks:
+                        browser_fraction = sum(
+                            1 for check in checks if browser_check_ok(check, browser["result"])
+                        ) / len(checks)
+                    else:
+                        browser_fraction = 1.0
                     # Runtime behaviour is the point of a webapp task, so it
                     # carries more weight than the static shape of the file.
                     partial = 0.4 * partial + 0.6 * browser_fraction
