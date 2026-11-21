@@ -1,0 +1,12 @@
+{
+  "name": "model-bench-browser-smoke",
+  "private": true,
+  "type": "module",
+  "description": "Optional Playwright smoke test used by model-bench --browser",
+  "scripts": {
+    "check": "node browser_smoke.mjs --check"
+  },
+  "dependencies": {
+    "playwright": "^1.65.1"
+  }
+}

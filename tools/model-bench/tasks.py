@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -288,6 +289,87 @@ def grade_sql(text: str) -> tuple[bool, str]:
     return (normalized == expected, f"rows={normalized} want={expected}")
 
 
+def extract_html(text: str) -> str:
+    """Return the HTML payload, tolerating fences, prose and thinking blocks."""
+    body = strip_thinking(text)
+    for pattern in (r"```html[ \t]*\n(.*?)```", r"```[ \t]*\n(.*?)```"):
+        blocks = re.findall(pattern, body, re.S | re.I)
+        if blocks:
+            body = max(blocks, key=len)
+            break
+    lowered = body.lower()
+    starts = [i for i in (lowered.find("<!doctype"), lowered.find("<html")) if i != -1]
+    if starts and min(starts) > 0:
+        body = body[min(starts):]
+    return body.strip()
+
+
+def _inline_scripts(html: str) -> str:
+    blocks = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S | re.I)
+    return "\n".join(blocks)
+
+
+def grade_webapp_snake(text: str) -> tuple[bool, str, float]:
+    """Single-file Snake: structural checks plus a JS syntax check when node exists.
+
+    Returns (passed, detail, score). score is the fraction of checks met, so a
+    nearly-correct game still ranks above one that does not run; passed is the
+    stricter "all required checks + syntax" verdict.
+    """
+    html = extract_html(text)
+    if not html:
+        return False, "no HTML found", 0.0
+    low = html.lower()
+    script = _inline_scripts(html)
+    required = {
+        "canvas": "<canvas" in low,
+        "canvas size": bool(re.search(r"<canvas[^>]*(width|height)\s*=", low)),
+        "inline script": bool(script.strip()),
+        "keydown": "keydown" in low,
+        "arrow keys": all(k in low for k in ("arrowup", "arrowdown", "arrowleft", "arrowright")),
+        "food": "food" in low,
+        "score": "score" in low,
+        "game over": "game over" in low or "gameover" in low,
+        "restart": "restart" in low,
+        "loop": "setinterval" in low or "requestanimationframe" in low,
+        "collision": ("wall" in low or "collision" in low)
+        and ("self" in low or "body" in low or "some(" in low),
+        "no external assets": not re.search(
+            r"<(script|img|link)[^>]+(src|href)\s*=\s*['\"]https?://", low
+        ),
+    }
+    extra = {
+        "wasd": all(re.search(rf"['\"][{c}{c.upper()}]['\"]", script) for c in "wasd"),
+    }
+    missing = [name for name, ok in required.items() if not ok]
+    optional_missing = [name for name, ok in extra.items() if not ok]
+    score = (sum(required.values()) + sum(extra.values())) / (len(required) + len(extra))
+    parts = []
+    if missing:
+        parts.append("missing: " + ", ".join(missing))
+    if optional_missing:
+        parts.append("optional missing: " + ", ".join(optional_missing))
+    detail = "; ".join(parts) if parts else "ok"
+
+    node = shutil.which("node")
+    if script.strip():
+        if not node:
+            detail += "; JS syntax skipped (node not found)"
+        else:
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "inline.js"
+                path.write_text(script, encoding="utf-8")
+                proc = subprocess.run(
+                    [node, "--check", str(path)],
+                    capture_output=True, text=True, timeout=15,
+                )
+                if proc.returncode != 0:
+                    err = (proc.stdout + proc.stderr).strip()[-600:]
+                    return False, f"JS syntax error: {err}", 0.0
+
+    return (not missing, detail, score)
+
+
 # --- task data -------------------------------------------------------------
 
 SCHEMA_SQL = """
@@ -300,6 +382,96 @@ INSERT INTO customers VALUES (1, 'Ada'), (2, 'Bob'), (3, 'Cy');
 INSERT INTO orders VALUES
   (1, 1, 100), (2, 1, 150), (3, 2, 150), (4, 3, 20);
 """
+
+REFERENCE_SNAKE = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Snake</title>
+<style>
+  body { background:#0a120f; color:#e7f0ea; font-family:system-ui,sans-serif;
+         display:grid; place-items:center; min-height:100vh; margin:0; }
+  canvas { background:#08120d; border:1px solid #244034; }
+  #over { margin-top:1rem; }
+</style>
+</head>
+<body>
+<canvas id="board" width="400" height="400"></canvas>
+<div id="hud">Score: <span id="score">0</span></div>
+<div id="over" hidden>Game Over <button id="restart">Restart</button></div>
+<script>
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const CELL = 20, COLS = 20, ROWS = 20;
+const OVER = document.getElementById('over');
+const SCORE = document.getElementById('score');
+let snake, dir, next, food, score, timer, dead;
+function reset() {
+  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir = {x:1,y:0}; next = {x:1,y:0}; score = 0; dead = false;
+  OVER.hidden = true; SCORE.textContent = '0';
+  placeFood(); clearInterval(timer); timer = setInterval(step, 100); draw();
+}
+function placeFood() {
+  do { food = {x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS)}; }
+  while (snake.some(s => s.x === food.x && s.y === food.y));
+}
+function turn(x, y) {
+  if (dead) return;
+  if (x === -dir.x && y === -dir.y) return;
+  next = {x, y};
+}
+function step() {
+  if (dead) return;
+  dir = next;
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+  const wall = head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS;
+  const self = snake.some(s => s.x === head.x && s.y === head.y);
+  if (wall || self) { dead = true; OVER.hidden = false; clearInterval(timer); draw(); return; }
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) {
+    score++; SCORE.textContent = String(score); placeFood();
+  } else snake.pop();
+  draw();
+}
+function draw() {
+  ctx.fillStyle = '#08120d'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#f87171'; ctx.fillRect(food.x*CELL+2, food.y*CELL+2, CELL-4, CELL-4);
+  ctx.fillStyle = '#4ade80';
+  for (const s of snake) ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2);
+}
+document.addEventListener('keydown', (e) => {
+  switch (e.key) {
+    case 'ArrowUp': case 'w': case 'W': turn(0,-1); break;
+    case 'ArrowDown': case 's': case 'S': turn(0,1); break;
+    case 'ArrowLeft': case 'a': case 'A': turn(-1,0); break;
+    case 'ArrowRight': case 'd': case 'D': turn(1,0); break;
+    case 'r': case 'R': reset(); break;
+  }
+});
+document.getElementById('restart').addEventListener('click', reset);
+reset();
+</script>
+</body>
+</html>'''
+
+
+SNAKE_PROMPT = """Build a complete, playable Snake game as a single self-contained HTML file.
+
+Requirements:
+- One file: HTML with inline <style> and <script>. No external libraries, fonts, or images.
+- Render the board on a <canvas> (about 400x400 pixels).
+- 20x20 grid. The snake starts length 3 near the centre, moving right.
+- Move on a fixed tick of about 8-10 cells per second, not on key repeat.
+- Arrow keys and WASD change direction. Ignore a 180-degree reversal.
+- Food appears on a random free cell. Eating it grows the snake by one cell and increments the score.
+- Show the current score on the page.
+- Game over when the snake hits a wall or its own body. Show a game-over message and allow restart (a button and/or a key).
+- Dark theme, readable at 900x700.
+
+Return only the complete HTML file in a single ```html code block. No explanations.
+"""
+
 
 TASKS = [
     {
@@ -587,6 +759,21 @@ TASKS = [
             "GROUP BY c.id ORDER BY total DESC LIMIT 2;"
         ),
         "grader": grade_sql,
+    },
+    {
+        "id": "webapp_snake",
+        "category": "webapp",
+        "quick": False,
+        "weight": 2.0,
+        "num_predict": 4096,
+        "num_ctx": 8192,
+        "timeout_s": 300,
+        "kind": "webapp",
+        "browser_checks": ["canvas", "animating", "no_errors", "game_over", "restart"],
+        "note": "single-file playable Snake: structure, JS syntax, optional browser smoke",
+        "prompt": SNAKE_PROMPT,
+        "reference": REFERENCE_SNAKE,
+        "grader": grade_webapp_snake,
     },
 ]
 

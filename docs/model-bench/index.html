@@ -57,9 +57,9 @@
                 <ul>
                     <li>Measures cold load, time-to-first-token, prefill and decode throughput
                         at short, medium, and long prompt sizes — after a discarded warmup.</li>
-                    <li>Runs 14 deterministic quality tasks: JSON, instruction following,
+                    <li>Runs 15 deterministic quality tasks: JSON, instruction following,
                         Python code against unit tests, SQL against SQLite, reasoning,
-                        extraction, and summarisation.</li>
+                        extraction, summarisation, and a whole-app Snake game.</li>
                     <li>Reports VRAM and GPU offload, marks the Pareto frontier, and scores
                         speed vs quality with configurable weights.</li>
                     <li>Writes <code>report.md</code>, <code>results.json</code>,
@@ -80,7 +80,9 @@
 ./bench.py --suggest                                     # candidates for this GPU
 ./bench.py -m qwen3:4b -m llama3.2:3b                    # compare two models
 ./bench.py -m qwen2.5-coder:7b --pull --suite full       # pull + full suite
-./bench.py --installed --speed-only --no-think           # throughput only</code></pre>
+./bench.py --installed --speed-only --no-think           # throughput only
+./bench.py -m qwen2.5-coder:7b --quality-only \
+           --category webapp --browser                   # whole-app + runtime checks</code></pre>
 
                 <h3>What you get</h3>
                 <p>A console summary, plus a markdown report and machine-readable results:</p>
@@ -118,6 +120,11 @@ qwen2.5:1.5b       75%       130.9         7902    3.26      1115    100   85.0<
                 <ul>
                     <li><code>--suite quick</code> runs 8 tasks; <code>--suite full</code> runs
                         all 14.</li>
+                    <li><code>--browser</code> adds an opt-in Playwright smoke test for webapp
+                        tasks: canvas animation, wall collision, restart, and runtime errors.
+                        Without it the webapp grader is static.</li>
+                    <li>A <code>trunc</code> column counts tasks that hit their token budget;
+                        those are always failed. The Snake task uses an 8k context and 4k output.</li>
                     <li>Cloud models work, but their speed is network-bound. Don't mix them into
                         a local comparison.</li>
                     <li>Use <code>--no-think</code> for thinking models when you care about raw

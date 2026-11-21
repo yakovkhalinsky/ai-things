@@ -9,8 +9,9 @@ roughly comparable across runs on the same GPU).
 
 ```
 speed  ->  cold load time, time-to-first-token, prefill tok/s, decode tok/s
-quality ->  14 deterministic tasks: JSON, instruction following, code (unit
-            tests), reasoning, extraction, summarisation, SQL (executed)
+quality ->  15 deterministic tasks: JSON, instruction following, code (unit
+            tests), reasoning, extraction, summarisation, SQL (executed),
+            and a whole-app webapp task (single-file Snake)
 ```
 
 ## Requirements
@@ -43,6 +44,9 @@ cd tools/model-bench
 
 # throughput only, no quality tasks, thinking models with hidden tokens off
 ./bench.py -m qwen3:8b --speed-only --no-think
+
+# one task category; --browser adds headless runtime checks for webapp tasks
+./bench.py -m qwen2.5-coder:7b --quality-only --category webapp --browser
 ```
 
 Results land in `results/<UTC timestamp>/`:
@@ -53,15 +57,16 @@ Results land in `results/<UTC timestamp>/`:
 | `results.json` | full run config and per-run/per-task records |
 | `report.csv` | one row per model, ready for a spreadsheet |
 | `responses/<model>/<task>.txt` | raw model output, for inspecting failures |
+| `responses/<model>/webapp_*.html` | extracted webapp, plus browser screenshots when `--browser` is on |
 
 The console prints the same summary table:
 
 ```
-model         quality  decode t/s  prefill t/s  ttft ms  load s  vram MiB  gpu %  score  pareto
-------------  -------  ----------  -----------  -------  ------  --------  -----  -----  ------
-llama3.2:3b        92%        71.2         4100       45    2.10      2900    100   88.4   yes
-qwen3:4b           96%        55.8         3200       63    2.60      3600    100   85.1   yes
-qwen2.5:1.5b       71%       142.5         7800       22    1.40      1500    100   80.6
+model         quality  decode t/s  prefill t/s  ttft ms  load s  vram MiB  gpu %  trunc  score  pareto
+------------  -------  ----------  -----------  -------  ------  --------  -----  -----  -----  ------
+llama3.2:3b        92%        71.2         4100       45    2.10      2900    100      0   88.4   yes
+qwen3:4b           96%        55.8         3200       63    2.60      3600    100      0   85.1   yes
+qwen2.5:1.5b       71%       142.5         7800       22    1.40      1500    100      2   80.6
 ```
 
 ## What the numbers mean
@@ -88,8 +93,11 @@ work, and thermals. Keep those flags identical when comparing. Use
 default leaves the model's own thinking behaviour in place (which is a real
 usage cost, but it makes decode numbers look worse).
 
-**Quality** is a weighted pass rate over the selected suite. Each grader is
-deterministic; no LLM judge is involved. The categories are:
+**Quality** is a weighted score over the selected suite. Each grader is
+deterministic; no LLM judge is involved. Most tasks are pass/fail, but a task
+may return partial credit (the webapp task does). A task that hits its token
+budget (`done_reason == length`) is always failed and counted in the `trunc`
+column. The categories are:
 
 | category | what it checks |
 | --- | --- |
@@ -99,8 +107,9 @@ deterministic; no LLM judge is involved. The categories are:
 | `reasoning` | arithmetic, entailment, a small constraint puzzle |
 | `extraction` | fields out of messy invoice text |
 | `summarize` | hard word cap plus required facts |
+| `webapp` | a single-file Snake game: structure, JS syntax, optional browser run |
 
-`--suite quick` runs 8 tasks (~1 min/model); `--suite full` runs all 14.
+`--suite quick` runs 8 tasks (~1 min/model); `--suite full` runs all 15.
 `--self-test` asserts every grader accepts its reference answer and rejects
 empty/garbage output, so a broken grader can't quietly pass everything.
 
@@ -109,6 +118,43 @@ run)`. Defaults 0.6 / 0.4; override with `--w-quality` / `--w-speed`. Because
 speed is normalised within the run, always compare models that were benched
 together. `pareto` marks models that nothing else beats on both quality and
 speed - the useful frontier when you don't want to pick weights.
+
+## Task filters
+
+`--category` and `--task` select from the full suite regardless of `--suite`,
+which is useful for a focused comparison:
+
+```bash
+./bench.py -m qwen2.5-coder:3b -m qwen2.5-coder:7b --quality-only --category webapp
+./bench.py -m qwen3:4b --quality-only --task code_fizzbuzz --task code_slugify
+```
+
+## Webapp tasks and optional browser checks
+
+The `webapp_snake` task asks for a complete single-file Snake game. Its default
+grader is static: it extracts the HTML, checks the structure (canvas, input
+handling, food, score, game over, restart, loop, collision), rejects external
+assets, and runs `node --check` on the inline script when `node` is available.
+It returns partial credit as a fraction of checks met, so a nearly-correct game
+ranks above one that does not run.
+
+`--browser` adds a Playwright smoke test: load the page in headless Chromium,
+confirm the canvas draws and animates, drive the snake into a wall, and attempt
+a restart. Runtime behaviour carries 60% of the webapp score. The run fails on
+console/page errors. Screenshots land beside the extracted HTML.
+
+The core tool remains stdlib-only; the browser path is optional:
+
+```bash
+cd tools/model-bench
+npm install                    # installs Playwright (node_modules is ignored)
+npx playwright install chromium  # or point BENCH_CHROME at an existing Chromium
+./bench.py -m qwen2.5-coder:7b --quality-only --category webapp --browser
+```
+
+If Chromium is already on disk, set `BENCH_CHROME=/path/to/chrome`. `--browser`
+fails fast at startup if node/Playwright/Chromium cannot launch, rather than
+silently skipping runtime checks.
 
 ## Adding models
 
@@ -131,9 +177,10 @@ Add a dict to `TASKS` in `tasks.py`:
     "quick": True,                  # included in --suite quick
     "weight": 1.0,                  # contribution to the quality score
     "num_predict": 200,
+    "num_ctx": 4096,                # optional; must fit prompt + output
     "prompt": "...",
     "format": "json",               # optional Ollama format hint
-    "grader": my_grader,            # text -> (passed, detail)
+    "grader": my_grader,            # text -> (passed, detail) or (passed, detail, score)
     "reference": "...",             # must pass my_grader in --self-test
     "note": "shown in the report",
 }
@@ -141,13 +188,19 @@ Add a dict to `TASKS` in `tasks.py`:
 
 Then run `./bench.py --self-test`. Keep graders tolerant of ` thinking` blocks
 and markdown fences (use the helpers in `tasks.py`), but strict about the thing
-the task is actually testing.
+the task is actually testing. A grader may return a third element, a score in
+`[0, 1]`, to earn partial credit. For a runnable webapp, add
+`"kind": "webapp"` and `"browser_checks": ["canvas", "animating",
+"no_errors", "game_over", "restart"]`.
 
 ## Caveats
 
 - **Code execution**: code tasks run model-generated Python in a temporary
   directory with a 10 s timeout and `python3 -I`. It is not a sandbox. Only run
   models you trust, ideally on a machine where that is acceptable.
+- **Browser checks** are opt-in and require node + Playwright; without them the
+  webapp task is static-only, so a page that parses can still score well while
+  failing at runtime. Use `--browser` when that distinction matters.
 - **Relative scoring**: `score` is meaningful within one run. Re-run the
   comparison set together before drawing conclusions.
 - **WSL2**: GPU clocks and thermal behaviour vary; treat 2-5% differences as

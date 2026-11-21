@@ -314,6 +314,88 @@ def bench_speed(model, args, think) -> dict:
     }
 
 
+def browser_selftest() -> tuple[bool, str]:
+    """Confirm node + the optional Playwright smoke script can launch a browser."""
+    node = shutil.which("node")
+    script = HERE / "browser_smoke.mjs"
+    if not node:
+        return False, "node not found on PATH"
+    if not script.exists():
+        return False, f"missing {script.name}"
+    try:
+        proc = subprocess.run(
+            [node, str(script), "--check"], cwd=str(HERE),
+            capture_output=True, text=True, timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "browser self-test timed out"
+    if proc.returncode == 0:
+        return True, "ok"
+    lines = (proc.stderr or proc.stdout).strip().splitlines()
+    return False, (lines[-1] if lines else f"exit {proc.returncode}")[:500]
+
+
+def run_browser_check(task, response_path: Path, model_dir: Path, timeout: float) -> dict:
+    """Run the optional Playwright smoke test on a generated webapp."""
+    node = shutil.which("node")
+    script = HERE / "browser_smoke.mjs"
+    if not node or not script.exists():
+        return {"status": "skipped", "reason": "node or browser_smoke.mjs not available"}
+    env = os.environ.copy()
+    env["BENCH_SHOTS"] = str(model_dir)
+    try:
+        proc = subprocess.run(
+            [node, str(script), str(response_path)], cwd=str(HERE),
+            capture_output=True, text=True, timeout=timeout, env=env,
+        )
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "reason": f"timed out after {timeout:g}s"}
+    if proc.returncode != 0:
+        lines = (proc.stderr or proc.stdout).strip().splitlines()
+        return {"status": "error", "reason": (lines[-1] if lines else f"exit {proc.returncode}")[:400]}
+    try:
+        data = json.loads(proc.stdout.strip().splitlines()[-1])
+    except (json.JSONDecodeError, IndexError):
+        return {"status": "error", "reason": "could not parse browser output"}
+    item = data[0] if isinstance(data, list) and data else data
+    if not isinstance(item, dict):
+        return {"status": "error", "reason": "unexpected browser output"}
+    return {"status": "ok", "result": item}
+
+
+def browser_check_ok(check: str, result: dict) -> bool:
+    if check == "canvas":
+        return bool(result.get("canvas"))
+    if check == "animating":
+        return bool(result.get("animating"))
+    if check == "no_errors":
+        return not result.get("pageErrors") and not result.get("consoleErrors")
+    if check == "game_over":
+        return bool(result.get("gameOver"))
+    if check == "restart":
+        return bool(result.get("restarted"))
+    return True
+
+
+def browser_failures(checks: list[str], result: dict) -> list[str]:
+    fails = []
+    if not result:
+        return ["no browser result"]
+    if "canvas" in checks and not result.get("canvas"):
+        fails.append("no canvas")
+    if "animating" in checks and not result.get("animating"):
+        fails.append("not animating")
+    if "no_errors" in checks:
+        for key, label in (("pageErrors", "page error"), ("consoleErrors", "console error")):
+            if result.get(key):
+                fails.append(f"{label}: {result[key][0]}")
+    if "game_over" in checks and not result.get("gameOver"):
+        fails.append("no game over")
+    if "restart" in checks and not result.get("restarted"):
+        fails.append("restart failed")
+    return fails
+
+
 def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
     records = []
     model_dir = response_dir / re.sub(r"[^A-Za-z0-9._-]+", "_", model)
@@ -325,22 +407,69 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
             "temperature": args.temperature,
             "seed": args.seed,
             "num_predict": task.get("num_predict", 300),
-            "num_ctx": args.num_ctx,
+            "num_ctx": task.get("num_ctx", args.num_ctx),
         }
+        timeout = task.get("timeout_s", args.timeout)
         started = time.perf_counter()
+        browser = None
         try:
-            resp = generate(model, task["prompt"], options, args.timeout,
+            resp = generate(model, task["prompt"], options, timeout,
                             fmt=task.get("format"), think=think)
             text = resp.get("response", "")
-            passed, detail = task["grader"](text)
+            done_reason = resp.get("done_reason")
+            truncated = done_reason == "length"
+            output_tokens = resp.get("eval_count")
+
+            check_path = model_dir / f"{task['id']}.txt"
+            if task.get("kind") == "webapp":
+                check_path = model_dir / f"{task['id']}.html"
+                check_path.write_text(taskmod.extract_html(text), encoding="utf-8")
+
+            verdict = task["grader"](text)
+            passed, detail = verdict[0], verdict[1]
+            partial = float(verdict[2]) if len(verdict) > 2 else (1.0 if passed else 0.0)
+            if truncated:
+                passed = False
+                partial = 0.0
+                detail = f"truncated at {output_tokens or '?'} tokens; {detail}"
+
+            if task.get("kind") == "webapp" and args.browser and not truncated:
+                checks = task.get("browser_checks", [])
+                browser = run_browser_check(task, check_path, model_dir, timeout)
+                if browser["status"] == "ok":
+                    browser_fraction = (
+                        sum(1 for check in checks if browser_check_ok(check, browser["result"]))
+                        / len(checks)
+                    ) if checks else 1.0
+                    # Runtime behaviour is the point of a webapp task, so it
+                    # carries more weight than the static shape of the file.
+                    partial = 0.4 * partial + 0.6 * browser_fraction
+                    fails = browser_failures(checks, browser["result"])
+                    if fails:
+                        passed = False
+                        detail = (detail + "; " if detail != "ok" else "") + "browser: " + "; ".join(fails)
+                    elif detail == "ok":
+                        detail = "ok; browser ok"
+                else:
+                    passed = False
+                    partial *= 0.5
+                    detail = ((detail + "; ") if detail != "ok" else "") + \
+                        f"browser {browser['status']}: {browser.get('reason', '')}"
+
             record = {
                 "id": task["id"],
                 "category": task["category"],
                 "weight": task.get("weight", 1.0),
                 "passed": bool(passed),
+                "score": partial,
                 "detail": detail,
                 "latency_s": time.perf_counter() - started,
-                "output_tokens": resp.get("eval_count"),
+                "prompt_tokens": resp.get("prompt_eval_count"),
+                "output_tokens": output_tokens,
+                "output_bytes": len(text.encode("utf-8")),
+                "done_reason": done_reason,
+                "truncated": truncated,
+                "browser": browser,
                 "output": text,
             }
         except Exception as exc:  # noqa: BLE001 - keep the suite running
@@ -349,26 +478,35 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
                 "category": task["category"],
                 "weight": task.get("weight", 1.0),
                 "passed": False,
+                "score": 0.0,
                 "detail": f"error: {exc}",
                 "latency_s": time.perf_counter() - started,
+                "prompt_tokens": None,
                 "output_tokens": None,
+                "output_bytes": 0,
+                "done_reason": None,
+                "truncated": False,
+                "browser": None,
                 "output": "",
             }
         (model_dir / f"{task['id']}.txt").write_text(record["output"], encoding="utf-8")
         records.append(record)
-        print(f" {'PASS' if record['passed'] else 'FAIL'}  {record['detail']}",
+        flags = " [truncated]" if record["truncated"] else ""
+        if record["browser"]:
+            flags += f" [browser {record['browser']['status']}]"
+        print(f" {'PASS' if record['passed'] else 'FAIL'}{flags}  {record['detail']}",
               file=sys.stderr, flush=True)
 
     total_weight = sum(r["weight"] for r in records) or 1.0
-    score = sum(r["weight"] for r in records if r["passed"]) / total_weight
+    score = sum(r["weight"] * r.get("score", 1.0 if r["passed"] else 0.0) for r in records) / total_weight
     categories: dict[str, dict] = {}
     for rec in records:
         cat = categories.setdefault(rec["category"], {"passed": 0, "total": 0, "weight": 0.0, "passed_weight": 0.0})
         cat["total"] += 1
         cat["weight"] += rec["weight"]
+        cat["passed_weight"] += rec["weight"] * rec.get("score", 1.0 if rec["passed"] else 0.0)
         if rec["passed"]:
             cat["passed"] += 1
-            cat["passed_weight"] += rec["weight"]
     for cat in categories.values():
         cat["score"] = cat["passed_weight"] / cat["weight"] if cat["weight"] else 0.0
     return {"score": score, "records": records, "categories": categories}
@@ -448,12 +586,13 @@ def summary_rows(results, args):
     rows = []
     for r in sorted(results, key=lambda x: x.get("composite", 0), reverse=True):
         if r.get("error"):
-            rows.append([r["model"], "ERROR"] + ["-"] * 10)
+            rows.append([r["model"], "ERROR"] + ["-"] * 11)
             continue
         speed = r.get("speed") or {}
         quality = r.get("quality") or {}
         meta = r.get("meta") or {}
         quality_cell = "n/a" if args.speed_only else f"{fmt(100 * quality.get('score', 0), 0)}%"
+        truncated = sum(1 for rec in quality.get("records", []) if rec.get("truncated"))
         rows.append([
             r["model"],
             quality_cell,
@@ -463,6 +602,7 @@ def summary_rows(results, args):
             fmt(r.get("load_s"), 2),
             fmt(r.get("vram_mib"), 0),
             fmt(r.get("gpu_pct"), 0, "-"),
+            str(truncated) if not args.speed_only else "-",
             fmt(100 * r.get("composite", 0), 1),
             "yes" if r.get("pareto") else "",
             meta.get("parameter_size") or "?",
@@ -472,33 +612,43 @@ def summary_rows(results, args):
 
 
 SUMMARY_HEADERS = ["model", "quality", "decode t/s", "prefill t/s", "ttft ms",
-                   "load s", "vram MiB", "gpu %", "score", "pareto", "params", "quant"]
+                   "load s", "vram MiB", "gpu %", "trunc", "score", "pareto", "params", "quant"]
 
 
 def build_report(results, args, version, host, suite_tasks, warnings) -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    extra = []
+    if args.category:
+        extra.append("categories=" + ",".join(args.category))
+    if args.task:
+        extra.append("tasks=" + ",".join(args.task))
+    extra.append("browser=" + ("on" if args.browser else "off"))
     lines = [
         "# model-bench report",
         "",
         f"- run: {stamp}",
         f"- host: {host}",
         f"- ollama: {version}  ({OLLAMA})",
-        f"- suite: {args.suite} ({len(suite_tasks)} tasks), speed cases: {args.speed_cases}, "
-        f"repeats: {args.repeats}",
-        f"- num_ctx: {args.num_ctx}, num_predict: {args.num_predict}, "
+        f"- tasks: {len(suite_tasks)} ({'full' if (args.category or args.task) else args.suite}"
+        f"{' filtered' if (args.category or args.task) else ''}), "
+        f"speed cases: {args.speed_cases}, repeats: {args.repeats}",
+        f"- speed num_ctx: {args.num_ctx}, speed num_predict: {args.num_predict}, "
         f"temperature: {args.temperature}, seed: {args.seed}, think: "
         f"{'off' if args.no_think else 'model default'}",
         f"- composite weights: quality {args.w_quality:g}, speed {args.w_speed:g}",
+        f"- filters: {'; '.join(extra)}",
         "",
         "## Summary",
         "",
         md_table(SUMMARY_HEADERS, summary_rows(results, args),
-                 ["---", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---:", ":-:", "---", "---"]),
+                 ["---", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---:",
+                  "---:", ":-:", "---", "---"]),
         "",
         "`score` is the weighted quality score plus decode throughput normalised "
         "to the fastest model in this run. `pareto` marks models that no other "
         "model beats on both quality and speed. Speed is the median of warm runs "
-        "after a discarded warmup; `load s` is the cold load of the first request.",
+        "after a discarded warmup; `load s` is the cold load of the first request. "
+        "`trunc` counts tasks that hit their token budget; those are always failed.",
         "",
     ]
 
@@ -511,11 +661,28 @@ def build_report(results, args, version, host, suite_tasks, warnings) -> str:
             row = [r["model"], f"{fmt(100 * quality.get('score', 0), 0)}%"]
             for cat in cats:
                 c = cats_data.get(cat)
-                row.append(f"{c['passed']}/{c['total']}" if c else "-")
+                row.append(f"{c['passed']}/{c['total']} ({100 * c['score']:.0f}%)" if c else "-")
             rows.append(row)
         lines += ["## Quality by category", "",
                   md_table(["model", "total"] + cats, rows,
                            ["---", "---:"] + ["---:"] * len(cats)), ""]
+
+        cost_rows = []
+        for r in sorted(results, key=lambda x: x.get("composite", 0), reverse=True):
+            recs = (r.get("quality") or {}).get("records", [])
+            if not recs:
+                continue
+            cost_rows.append([
+                r["model"],
+                len(recs),
+                sum(rec.get("output_tokens") or 0 for rec in recs),
+                fmt(sum(rec.get("latency_s") or 0 for rec in recs), 1),
+                sum(rec.get("output_bytes") or 0 for rec in recs),
+                sum(1 for rec in recs if rec.get("truncated")),
+            ])
+        lines += ["## Quality cost", "",
+                  md_table(["model", "tasks", "out tokens", "gen s", "out bytes", "trunc"],
+                           cost_rows, ["---", "---:", "---:", "---:", "---:", "---:"]), ""]
 
     if not args.quality_only:
         cases = [c.strip() for c in args.speed_cases.split(",") if c.strip() in SPEED_CASES]
@@ -601,20 +768,22 @@ def write_outputs(out_dir: Path, results, args, version, host, suite_tasks, warn
     with csv_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(["model", "quality", "decode_tps", "prefill_tps", "ttft_ms",
-                         "load_s", "vram_mib", "gpu_pct", "composite", "pareto",
+                         "load_s", "vram_mib", "gpu_pct", "trunc", "composite", "pareto",
                          "params", "quant", "suite", "num_ctx"])
         for r in sorted(results, key=lambda x: x.get("composite", 0), reverse=True):
             if r.get("error"):
-                writer.writerow([r["model"], "ERROR"] + [""] * 11)
+                writer.writerow([r["model"], "ERROR"] + [""] * 13)
                 continue
             speed = r.get("speed") or {}
             quality = r.get("quality") or {}
             meta = r.get("meta") or {}
+            truncated = sum(1 for rec in quality.get("records", []) if rec.get("truncated"))
             writer.writerow([
                 r["model"], "" if args.speed_only else f"{quality.get('score', 0):.3f}", fmt(speed.get("decode_tps")),
                 fmt(speed.get("prefill_tps"), 0), fmt(speed.get("ttft_ms"), 0),
                 fmt(r.get("load_s"), 2), fmt(r.get("vram_mib"), 0),
-                fmt(r.get("gpu_pct"), 0, ""), f"{r.get('composite', 0):.3f}",
+                fmt(r.get("gpu_pct"), 0, ""), truncated,
+                f"{r.get('composite', 0):.3f}",
                 "yes" if r.get("pareto") else "", meta.get("parameter_size") or "",
                 meta.get("quantization") or "", args.suite, args.num_ctx,
             ])
@@ -690,15 +859,20 @@ def self_test() -> int:
     print(f"{'task':<20s} {'reference':<10s} {'empty':<7s} {'garbage':<8s} detail")
     for task in taskmod.TASKS:
         try:
-            ref_ok, ref_detail = task["grader"](task["reference"])
+            verdict = task["grader"](task["reference"])
+            ref_ok, ref_detail = verdict[0], verdict[1]
+            score = verdict[2] if len(verdict) > 2 else (1.0 if ref_ok else 0.0)
+            if not 0.0 <= float(score) <= 1.0:
+                ref_ok, ref_detail = False, f"score {score!r} outside [0,1]"
         except Exception as exc:  # noqa: BLE001
             ref_ok, ref_detail = False, f"raised {exc!r}"
         try:
-            empty_ok, _ = task["grader"]("")
+            empty_ok = bool(task["grader"]("")[0])
         except Exception:  # noqa: BLE001
             empty_ok = False
         try:
-            junk_ok, junk_detail = task["grader"]("I'm sorry, but I cannot help with that.")
+            junk = task["grader"]("I'm sorry, but I cannot help with that.")
+            junk_ok, junk_detail = bool(junk[0]), junk[1]
         except Exception:  # noqa: BLE001
             junk_ok = False
             junk_detail = "raised"
@@ -773,6 +947,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--suggest", action="store_true", help="print suggested models for this GPU class")
     parser.add_argument("--pull", action="store_true", help="pull missing models before benching")
     parser.add_argument("--suite", choices=["quick", "full"], default="quick")
+    parser.add_argument("-c", "--category", action="append", default=[],
+                        help="only these task categories (repeatable, comma/space separated)")
+    parser.add_argument("--task", action="append", default=[],
+                        help="only these task ids (repeatable, comma/space separated)")
+    parser.add_argument("--browser", action="store_true",
+                        help="run headless browser checks for webapp tasks (node + playwright)")
     parser.add_argument("--speed-only", action="store_true")
     parser.add_argument("--quality-only", action="store_true")
     parser.add_argument("--speed-cases", default="short,medium,long",
@@ -797,6 +977,14 @@ def main(argv: list[str]) -> int:
 
     if args.self_test:
         return self_test()
+
+    if args.browser:
+        ok, message = browser_selftest()
+        if not ok:
+            print(f"error: --browser requested but unavailable: {message}", file=sys.stderr)
+            print("  install node and run `npm install` (plus `npx playwright install chromium`)\n"
+                  "  in tools/model-bench, or omit --browser for static checks only.", file=sys.stderr)
+            return 2
 
     if args.suggest:
         print("# Suggested local models for ~8 GB VRAM (edit models.txt to taste)\n")
@@ -846,7 +1034,19 @@ def main(argv: list[str]) -> int:
             print(f"error: could not pull {', '.join(still)}", file=sys.stderr)
             return 2
 
-    suite_tasks = taskmod.selected(args.suite)
+    filtered = bool(args.category or args.task)
+    suite_tasks = taskmod.selected("full" if filtered else args.suite)
+    if args.category:
+        wanted = set(parse_models(args.category))
+        suite_tasks = [t for t in suite_tasks if t["category"] in wanted]
+    if args.task:
+        wanted = set(parse_models(args.task))
+        suite_tasks = [t for t in suite_tasks if t["id"] in wanted]
+    if not suite_tasks:
+        print("error: no tasks match the category/task filter", file=sys.stderr)
+        return 2
+    if args.browser and not any(t.get("kind") == "webapp" for t in suite_tasks):
+        print("note: --browser only applies to webapp tasks; none selected", file=sys.stderr)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     label = f"-{args.label}" if args.label else ""
     out_dir = Path(args.out) / f"{stamp}{label}"
@@ -854,7 +1054,9 @@ def main(argv: list[str]) -> int:
     host = host_summary()
 
     print(f"model-bench {version} | {host}", file=sys.stderr)
-    print(f"suite={args.suite} ({len(suite_tasks)} tasks) | models={len(models)} | out={out_dir}",
+    selection = "full" if filtered else args.suite
+    print(f"tasks={len(suite_tasks)} ({selection}{' filtered' if filtered else ''}) | "
+          f"browser={'on' if args.browser else 'off'} | models={len(models)} | out={out_dir}",
           file=sys.stderr)
 
     results: list[dict] = []
@@ -886,7 +1088,8 @@ def main(argv: list[str]) -> int:
 
     rows = summary_rows(results, args)
     print("\n" + console_table(SUMMARY_HEADERS, rows,
-                               ["<", ">", ">", ">", ">", ">", ">", ">", ">", "^", "<", "<"]))
+                               ["<", ">", ">", ">", ">", ">", ">", ">", ">", ">",
+                                "^", "<", "<"]))
     print(f"\nwrote {md_path}\n      {json_path}\n      {csv_path}", file=sys.stderr)
     if warnings:
         print("\nwarnings:", file=sys.stderr)
