@@ -332,14 +332,14 @@ def grade_webapp_snake(text: str) -> tuple[bool, str, float]:
         "game over": "game over" in low or "gameover" in low,
         "restart": "restart" in low,
         "loop": any(k in low for k in ("setinterval", "requestanimationframe", "settimeout")),
-        "collision": (
+        "collision": bool((
             "wall" in low or "collision" in low
             or re.search(r"\.(x|y)\s*[<>]=?\s*0", low)
             or re.search(r"\.(x|y)\s*[<>]=?\s*(grid|cols|rows|width|height|canvas)", low)
         ) and (
             "self" in low or "body" in low or "some(" in low
             or re.search(r"snake\[[^\]]+\]\.(x|y)", low)
-        ),
+        )),
         "no external assets": not re.search(
             r"<(script|img|link)[^>]+(src|href)\s*=\s*['\"]https?://", low
         ),
