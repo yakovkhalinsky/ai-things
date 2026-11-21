@@ -864,11 +864,20 @@ def self_test() -> int:
     print(f"{'task':<20s} {'reference':<10s} {'empty':<7s} {'garbage':<8s} detail")
     for task in taskmod.TASKS:
         try:
-            verdict = task["grader"](task["reference"])
-            ref_ok, ref_detail = verdict[0], verdict[1]
-            score = verdict[2] if len(verdict) > 2 else (1.0 if ref_ok else 0.0)
-            if not 0.0 <= float(score) <= 1.0:
-                ref_ok, ref_detail = False, f"score {score!r} outside [0,1]"
+            variants = [task["reference"]]
+            if task.get("reference_alt"):
+                variants.append(task["reference_alt"])
+            ref_ok, ref_detail = True, "ok"
+            for index, sample in enumerate(variants):
+                verdict = task["grader"](sample)
+                sample_ok, sample_detail = verdict[0], verdict[1]
+                score = verdict[2] if len(verdict) > 2 else (1.0 if sample_ok else 0.0)
+                if not 0.0 <= float(score) <= 1.0:
+                    sample_ok, sample_detail = False, f"score {score!r} outside [0,1]"
+                if not sample_ok:
+                    ref_ok = False
+                    ref_detail = f"variant {index}: {sample_detail}"
+                    break
         except Exception as exc:  # noqa: BLE001
             ref_ok, ref_detail = False, f"raised {exc!r}"
         try:

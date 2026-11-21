@@ -37,9 +37,10 @@ def strip_thinking(text: str) -> str:
 
 
 def fenced(text: str, lang: str = "python") -> str | None:
-    """Return the largest ```lang fenced block, if any."""
-    pattern = rf"```(?:{lang}|py)?[ \t]*\n(.*?)```" if lang == "python" else r"```[ \t]*\n(.*?)```"
-    blocks = re.findall(pattern, text, re.S)
+    """Return the largest fenced block tagged with lang (python also accepts py)."""
+    tags = f"{lang}|py" if lang == "python" else re.escape(lang)
+    pattern = rf"```(?:{tags})?[ \t]*\n(.*?)```"
+    blocks = re.findall(pattern, text, re.S | re.I)
     return max(blocks, key=len) if blocks else None
 
 
@@ -763,6 +764,11 @@ TASKS = [
             "SELECT c.name, SUM(o.amount) AS total FROM customers c "
             "JOIN orders o ON o.customer_id = c.id "
             "GROUP BY c.id ORDER BY total DESC LIMIT 2;"
+        ),
+        "reference_alt": (
+            "```sql\nSELECT c.name, SUM(o.amount) AS total FROM customers c "
+            "JOIN orders o ON o.customer_id = c.id "
+            "GROUP BY c.id ORDER BY total DESC LIMIT 2;\n```"
         ),
         "grader": grade_sql,
     },
