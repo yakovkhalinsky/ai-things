@@ -96,13 +96,14 @@ EOF
     say "Installed ${target}"
 }
 
-TOOLS_OK=0
+OL_OK=0
+MB_OK=0
 if [ "${INSTALL_TOOLS}" = "1" ]; then
     mkdir -p "${BIN_DIR}"
 
     if command -v bash >/dev/null 2>&1; then
         if OL_TARGET="${BIN_DIR}/ol" bash "${HOME_DIR}/tools/ol/install.sh"; then
-            TOOLS_OK=1
+            OL_OK=1
         else
             warn "ol install failed; continuing"
         fi
@@ -111,13 +112,20 @@ if [ "${INSTALL_TOOLS}" = "1" ]; then
     fi
 
     if command -v python3 >/dev/null 2>&1; then
-        install_model_bench
-        TOOLS_OK=1
+        if install_model_bench; then
+            MB_OK=1
+        else
+            warn "model-bench install failed; continuing"
+        fi
     else
         warn "python3 not found; skipping model-bench"
     fi
 else
     say "Skipping tools (AI_THINGS_INSTALL_TOOLS=0)"
+fi
+TOOLS_OK=0
+if [ "${OL_OK}" = "1" ] || [ "${MB_OK}" = "1" ]; then
+    TOOLS_OK=1
 fi
 
 # ol's installer owns the ~/bin PATH line when it runs. Only add one if it is
@@ -211,8 +219,11 @@ fi
 
 say ""
 say "ai-things installed."
-if [ "${TOOLS_OK}" = "1" ]; then
-    say "  tools:   ${BIN_DIR}/ol, ${BIN_DIR}/model-bench"
+if [ "${OL_OK}" = "1" ]; then
+    say "  ol:          ${BIN_DIR}/ol"
+fi
+if [ "${MB_OK}" = "1" ]; then
+    say "  model-bench: ${BIN_DIR}/model-bench"
 fi
 if [ "${INSTALL_SKILLS}" = "1" ]; then
     say "  skills:  ~/.claude/skills/{code-smells,comfyui-prompt}"
