@@ -66,12 +66,16 @@
                 </ul>
 
                 <h2>Install</h2>
-                <pre><code>git clone https://github.com/yakovkhalinsky/ai-things.git
-cd ai-things
-./scripts/install.sh</code></pre>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh</code></pre>
+                <p>
+                    Installs the skill and the <code>/code-smells</code> command into
+                    <code>~/.claude</code>, so they work from any project. Restart Claude
+                    Code afterwards.
+                </p>
                 <p class="muted">
-                    Restart Claude Code so the project-local skill and command are
-                    registered.
+                    For a project-local install instead, from a checkout:
+                    <code>./scripts/install.sh</code> copies the same files into the
+                    project's <code>.claude/</code>.
                 </p>
 
                 <h2>Usage</h2>

@@ -74,12 +74,17 @@
                 </ul>
 
                 <h2>Install</h2>
-                <pre><code>./tools/ol/install.sh</code></pre>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh</code></pre>
                 <p>
-                    This installs <code>ol</code> into <code>~/bin</code> via a rename,
-                    records <code>~/.ol-version</code>, installs tab completion for your
-                    shell, adds the guarded sourcing line, and adds <code>~/bin</code> to
-                    your PATH if needed.
+                    Installs <code>ol</code> and <code>model-bench</code> into
+                    <code>~/bin</code>. From a checkout,
+                    <code>./tools/ol/install.sh</code> installs just <code>ol</code>.
+                </p>
+                <p>
+                    The install is a rename into <code>~/bin</code>, records
+                    <code>~/.ol-version</code>, installs tab completion for your shell,
+                    adds the guarded sourcing line, and adds <code>~/bin</code> to your
+                    PATH if needed.
                 </p>
                 <p class="muted">
                     Set <code>OL_TARGET</code> to install somewhere else; PATH and completion

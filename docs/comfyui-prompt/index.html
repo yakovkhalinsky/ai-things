@@ -105,14 +105,19 @@
                 </p>
 
                 <h2>Install</h2>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh</code></pre>
+                <p class="muted">
+                    Installs the skill and both commands into <code>~/.claude</code>. For a
+                    project-local install instead, run <code>./scripts/install.sh</code> in
+                    a checkout.
+                </p>
                 <ol>
                     <li>Install ComfyUI from <a href="https://comfy.org/download">comfy.org/download</a>
                         or the <a href="https://github.com/comfyanonymous/ComfyUI">GitHub repo</a>.</li>
                     <li>Put the three model files in the folders shown above.</li>
                     <li>If ComfyUI is not on localhost, create <code>.env.local</code> at the
                         project root with the server URL.</li>
-                    <li>Open this project in Claude Code and restart it so the local skill and
-                        commands are registered.</li>
+                    <li>Restart Claude Code so the skill and commands are registered.</li>
                 </ol>
 
                 <pre><code># .env.local at the project root (optional, for a remote ComfyUI)

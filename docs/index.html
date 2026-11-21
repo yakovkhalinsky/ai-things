@@ -41,26 +41,37 @@
                     small, self-contained, and works without a build step.
                 </p>
                 <div class="hero-actions">
-                    <a class="button" href="#assets">Browse the catalogue</a>
-                    <a class="button ghost" href="https://github.com/yakovkhalinsky/ai-things">View on GitHub</a>
+                    <a class="button" href="#install">Install</a>
+                    <a class="button ghost" href="#assets">Browse the catalogue</a>
+                    <a class="button ghost" href="https://github.com/yakovkhalinsky/ai-things">GitHub</a>
                 </div>
             </div>
         </section>
 
-        <section class="section">
+        <section class="section" id="install">
             <div class="container">
-                <h2>Use it</h2>
+                <h2>Install</h2>
                 <p class="section-note">
-                    Clone once, then install the skills and commands into Claude Code.
+                    Tools first, then the Claude Code skills and commands. Re-run the same
+                    command to update.
                 </p>
-                <pre><code>git clone https://github.com/yakovkhalinsky/ai-things.git
-cd ai-things
-./scripts/install.sh</code></pre>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh</code></pre>
+                <ul>
+                    <li><code>ol</code> and <code>model-bench</code> → <code>~/bin</code></li>
+                    <li><code>code-smells</code> and <code>comfyui-prompt</code> →
+                        <code>~/.claude/skills</code> and <code>~/.claude/commands</code></li>
+                    <li>the checkout → <code>~/.local/share/ai-things</code></li>
+                </ul>
                 <p class="muted">
-                    The script copies the skills and commands into <code>.claude/</code>;
-                    restart Claude Code afterwards. On systems where the committed symlinks
-                    already work, this step is unnecessary. Tools install independently —
-                    see their pages.
+                    Restart Claude Code after installing so it picks up the user-level
+                    skills. Skip either half with <code>AI_THINGS_INSTALL_TOOLS=0</code> or
+                    <code>AI_THINGS_INSTALL_SKILLS=0</code>; pin a ref with
+                    <code>AI_THINGS_REF=&lt;commit&gt;</code>.
+                </p>
+                <p class="muted">
+                    Prefer a checkout? <code>git clone … &amp;&amp; ./scripts/install.sh</code>
+                    installs the same skills into the current project's
+                    <code>.claude/</code> instead.
                 </p>
             </div>
         </section>
@@ -69,8 +80,50 @@ cd ai-things
 
         <section class="section" id="assets">
             <div class="container">
+                <h2>Tools</h2>
+                <p class="section-note">
+                    Standalone command-line tools, installed as <code>ol</code> and
+                    <code>model-bench</code>. No agent required.
+                </p>
+                <div class="grid">
+                    <a class="card" href="ol/">
+                        <div class="chips">
+                            <span class="chip accent">CLI</span>
+                            <span class="chip">tools</span>
+                        </div>
+                        <h3>ol</h3>
+                        <p>
+                            A shortcut for launching Ollama-backed agents. Sets the real
+                            context window, passes arguments through untouched, completes
+                            model names, and keeps itself current.
+                        </p>
+                        <span class="card-cta">Read more →</span>
+                    </a>
+
+                    <a class="card" href="model-bench/">
+                        <div class="chips">
+                            <span class="chip accent">CLI</span>
+                            <span class="chip">tools</span>
+                        </div>
+                        <h3>model-bench</h3>
+                        <p>
+                            Compare local models on speed and quality. Cold-load and warm
+                            throughput, 15 deterministic tasks including a whole-app Snake,
+                            and a Pareto-ranked report.
+                        </p>
+                        <span class="card-cta">Read more →</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="container">
                 <h2>Skills &amp; commands</h2>
-                <p class="section-note">Loaded by Claude Code from this project.</p>
+                <p class="section-note">
+                    Installed into <code>~/.claude</code> so Claude Code can use them from
+                    any project.
+                </p>
                 <div class="grid">
                     <a class="card" href="code-smells/">
                         <div class="chips">
@@ -96,41 +149,6 @@ cd ai-things
                             Turn a natural-language image request into a valid ComfyUI API
                             graph, submit it, and wait for the render — with workflow
                             templates and seed reuse.
-                        </p>
-                        <span class="card-cta">Read more →</span>
-                    </a>
-                </div>
-            </div>
-        </section>
-
-        <section class="section">
-            <div class="container">
-                <h2>Tools</h2>
-                <p class="section-note">Standalone command-line tools, no agent required.</p>
-                <div class="grid">
-                    <a class="card" href="ol/">
-                        <div class="chips">
-                            <span class="chip accent">CLI</span>
-                            <span class="chip">tools</span>
-                        </div>
-                        <h3>ol</h3>
-                        <p>
-                            A shortcut for launching Ollama-backed agents. Sets the real
-                            context window, passes arguments through untouched, completes
-                            model names, and keeps itself current.
-                        </p>
-                        <span class="card-cta">Read more →</span>
-                    </a>
-
-                    <a class="card" href="model-bench/">
-                        <div class="chips">
-                            <span class="chip accent">CLI</span>
-                            <span class="chip">tools</span>
-                        </div>
-                        <h3>model-bench</h3>
-                        <p>
-                            Compare local models on speed and quality. Cold-load and warm
-                            throughput, 14 deterministic tasks, and a Pareto-ranked report.
                         </p>
                         <span class="card-cta">Read more →</span>
                     </a>

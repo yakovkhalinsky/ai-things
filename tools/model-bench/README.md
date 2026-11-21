@@ -14,6 +14,15 @@ quality ->  15 deterministic tasks: JSON, instruction following, code (unit
             and a whole-app webapp task (single-file Snake)
 ```
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+```
+
+This puts `model-bench` in `~/bin` (alongside `ol`). The rest of this README
+uses `./bench.py`; from an installed copy use `model-bench` instead.
+
 ## Requirements
 
 - Ollama reachable (default `http://localhost:11434`, honours `OLLAMA_HOST`)

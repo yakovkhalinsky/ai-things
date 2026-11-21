@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Install Claude Code primitives from this repo into .claude/
-# Usage: ./scripts/install.sh
-# This is only needed on systems where the symlinks in .claude/ don't work
-# (e.g. Windows without symlink support).
+# Project-local installer: copy Claude Code primitives from this repo into
+# .claude/. Usage: ./scripts/install.sh
+#
+# For a user-level install into ~/.claude, use the root one-liner instead:
+#   curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+#
+# This script is for systems where the symlinks in .claude/ don't work
+# (e.g. Windows without symlink support), or when you want project-local files.
 
 set -euo pipefail
 
