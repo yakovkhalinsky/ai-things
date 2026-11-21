@@ -309,14 +309,11 @@ pre {
     overflow-x: auto;
     line-height: 1.55;
 }
-pre.prompt code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
 pre code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 0.86rem;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 p code, li code, td code {
     padding: 0.12em 0.36em;

@@ -66,6 +66,47 @@
                         <code>report.csv</code>, and the raw response for every task.</li>
                 </ul>
 
+                <h2>Requirements</h2>
+                <ul>
+                    <li>Ollama reachable at <code>http://localhost:11434</code>; honours
+                        <code>OLLAMA_HOST</code>.</li>
+                    <li>Python 3.10+. Standard library only — no venv, no pip install.</li>
+                    <li>Optional: <code>nvidia-smi</code> for the GPU line, and
+                        <code>ollama</code> on PATH for <code>--pull</code>.</li>
+                </ul>
+
+                <h2>Install</h2>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- model-bench</code></pre>
+                <p>
+                    Installs <code>model-bench</code> into <code>~/bin</code>. Install
+                    <code>ol</code> separately with <code>sh -s -- ol</code> if you want it.
+                    From a checkout, replace <code>model-bench</code> with
+                    <code>./bench.py</code> in the examples below.
+                </p>
+                <p class="muted">
+                    The optional <code>--browser</code> checks need node and Playwright:
+                </p>
+                <pre><code>cd ~/.local/share/ai-things/tools/model-bench
+npm install
+npx playwright install chromium</code></pre>
+
+                <h2>Usage</h2>
+                <pre><code>model-bench --self-test                    # check graders
+model-bench --suggest                      # GPU suggestions
+model-bench -m qwen3:4b -m llama3.2:3b     # compare models
+model-bench --installed --suite full       # full suite
+model-bench --speed-only --no-think        # throughput only
+model-bench --category webapp --browser    # whole-app + runtime</code></pre>
+
+                <h3>What you get</h3>
+                <p>A console summary, plus a markdown report and machine-readable results:</p>
+                <pre><code>model         quality  decode t/s  prefill t/s  load s  vram MiB  gpu %  trunc  score
+llama3.2:1b        88%       121.1        12757    2.60      1448    100      0   89.5
+qwen2.5:1.5b       75%       130.9         7902    3.26      1115    100      0   85.0</code></pre>
+                <p class="muted">
+                    Example run on an RTX 4060 Laptop 8&nbsp;GB. Your numbers will differ.
+                </p>
+
                 <h2>What's in the suite</h2>
                 <p>
                     Eight tasks run in <code>--suite quick</code>; <code>--suite full</code>
@@ -100,8 +141,7 @@
 </table>
 </div>
 
-                <details>
-                    <summary>Full suite adds 7 tasks</summary>
+                <h3>Full suite adds 7 tasks</h3>
                     <p class="muted">
                         The full suite includes the quick tasks plus these.
                         <code>webapp_snake</code> carries weight 2; everything else is
@@ -121,7 +161,6 @@
 </tbody>
 </table>
 </div>
-                </details>
 
                 <details>
                     <summary>Exact prompts</summary>
@@ -213,48 +252,6 @@ Return only the complete HTML file in a single ```html code block. No explanatio
                     <code>webapp_snake</code> earns partial credit, and a task that hits its
                     token budget is failed. With <code>--browser</code>, the Snake runtime
                     checks make up 60% of that task's score.
-                </p>
-
-                <h2>Requirements</h2>
-                <ul>
-                    <li>Ollama reachable at <code>http://localhost:11434</code>; honours
-                        <code>OLLAMA_HOST</code>.</li>
-                    <li>Python 3.10+. Standard library only — no venv, no pip install.</li>
-                    <li>Optional: <code>nvidia-smi</code> for the GPU line, and
-                        <code>ollama</code> on PATH for <code>--pull</code>.</li>
-                </ul>
-
-                <h2>Install</h2>
-                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- model-bench</code></pre>
-                <p>
-                    Installs <code>model-bench</code> into <code>~/bin</code>. Install
-                    <code>ol</code> separately with <code>sh -s -- ol</code> if you want it.
-                    From a checkout, replace <code>model-bench</code> with
-                    <code>./bench.py</code> in the examples below.
-                </p>
-                <p class="muted">
-                    The optional <code>--browser</code> checks need node and Playwright:
-                </p>
-                <pre><code>cd ~/.local/share/ai-things/tools/model-bench
-npm install
-npx playwright install chromium</code></pre>
-
-                <h2>Usage</h2>
-                <pre><code>model-bench --self-test                                   # check the graders
-model-bench --suggest                                     # candidates for this GPU
-model-bench -m qwen3:4b -m llama3.2:3b                    # compare two models
-model-bench -m qwen2.5-coder:7b --pull --suite full       # pull + full suite
-model-bench --installed --speed-only --no-think           # throughput only
-model-bench -m qwen2.5-coder:7b --quality-only \
-            --category webapp --browser                   # whole-app + runtime checks</code></pre>
-
-                <h3>What you get</h3>
-                <p>A console summary, plus a markdown report and machine-readable results:</p>
-                <pre><code>model         quality  decode t/s  prefill t/s  load s  vram MiB  gpu %  trunc  score
-llama3.2:1b        88%       121.1        12757    2.60      1448    100      0   89.5
-qwen2.5:1.5b       75%       130.9         7902    3.26      1115    100      0   85.0</code></pre>
-                <p class="muted">
-                    Example run on an RTX 4060 Laptop 8&nbsp;GB. Your numbers will differ.
                 </p>
 
                 <h2>How the numbers work</h2>
