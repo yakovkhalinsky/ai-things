@@ -40,6 +40,9 @@ cd tools/model-bench
 # sanity-check the graders themselves (no models needed)
 ./bench.py --self-test
 
+# list every quality task, category, suite, and weight
+./bench.py --list-tasks
+
 # see candidates that suit ~8 GB VRAM
 ./bench.py --suggest
 
@@ -96,6 +99,14 @@ when switching models.
 - `ttft ms` is wall-clock to the first streamed token.
 - `vram MiB` / `gpu %` come from `/api/ps` after the run: how much of the model
   is resident in VRAM. `gpu % < 100` means part of it spilled to CPU.
+- The speed section reports **within-case CV** across repeats. Treat sub-5%
+  decode differences as noise; prefill is noisier on short prompts.
+- The report lists each model's **digest**, and `results.json` records
+  Python/platform, GPU driver/CUDA, and selected `OLLAMA_*` variables, so a moved
+  model tag is visible.
+- `max rep` in the quality-cost table is the highest 8-gram repetition ratio
+  among a model's outputs. High values usually mean a loop; it is diagnostic,
+  not a pass/fail rule.
 
 Speed is sensitive to `--num-ctx`, `--num-predict`, thinking mode, other GPU
 work, and thermals. Keep those flags identical when comparing. Use
@@ -224,18 +235,18 @@ the task is actually testing. A grader may return a third element, a score in
 Known gaps, roughly in priority order. None are implemented yet; use the tool as
 a per-machine triage harness first.
 
-- **Reproducibility metadata** — record model digest, Ollama environment, and
-  GPU driver/CUDA version in `results.json`; a moved tag currently invalidates
-  comparisons silently.
-- **Uncertainty** — confidence intervals or min–max for speed, and repeated
-  samples for quality tasks instead of N=1.
+- **Done — reproducibility metadata.** Model digests are in the report;
+  Python/platform, GPU driver/CUDA, and selected `OLLAMA_*` variables are in
+  `results.json`.
+- **Partial — uncertainty.** Speed min/max and within-case CV are reported;
+  quality tasks still run once each.
 - **Harder coverage** — repo-level/multi-file coding, multi-turn conversations,
   tool calling, and long-context retrieval.
 - **Adversarial self-test** — fenced, prose-wrapped, truncated, and near-miss
   outputs, not just a reference answer and garbage.
 - **Run comparison** — a `--compare results.json` mode and a baseline view.
-- **Degeneration metric** — detect repetition loops, which currently surface
-  only as truncation.
+- **Done — degeneration metric.** An 8-gram repetition ratio is recorded per
+  task, with `max rep` in the report and a console flag.
 - **Composite semantics** — make single-model scores meaningful, or require at
   least two models for a score.
 - **Execution isolation** — containerise generated code and browser checks, and

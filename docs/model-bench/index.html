@@ -92,6 +92,7 @@ npx playwright install chromium</code></pre>
 
                 <h2>Usage</h2>
                 <pre><code>model-bench --self-test                    # check graders
+model-bench --list-tasks                   # tasks and suites
 model-bench --suggest                      # GPU suggestions
 model-bench -m qwen3:4b -m llama3.2:3b     # compare models
 model-bench --installed --suite full       # full suite
@@ -269,6 +270,16 @@ Return only the complete HTML file in a single ```html code block. No explanatio
                         every task has a deterministic grader, and <code>--self-test</code>
                         checks each grader against reference answers and rejects
                         empty/garbage output.</li>
+                    <li><strong>Provenance</strong> — the report lists each model's digest,
+                        and <code>results.json</code> also records Python/platform, the GPU
+                        driver and CUDA version, and relevant <code>OLLAMA_*</code>
+                        environment variables.</li>
+                    <li><strong>Noise</strong> — the speed section reports within-case
+                        coefficient of variation across repeats. Treat sub-5% decode
+                        differences as noise.</li>
+                    <li><strong>Repetition</strong> — <code>max rep</code> is the highest
+                        8-gram repetition ratio among a model's quality outputs; high values
+                        usually indicate a loop. It is diagnostic, not pass/fail.</li>
                 </ul>
 
                 <h2>Good to know</h2>
@@ -317,16 +328,18 @@ Return only the complete HTML file in a single ```html code block. No explanatio
 
                 <h2>Planned improvements</h2>
                 <p>
-                    Known gaps, roughly in priority order. None of these are implemented yet;
-                    the current tool is strongest as a per-machine triage harness.
+                    Known gaps, roughly in priority order. Items marked done or partial are in
+                    the current release; the tool is still strongest as a per-machine triage
+                    harness.
                 </p>
                 <ul>
-                    <li><strong>Reproducibility metadata</strong> — record the model digest,
-                        Ollama environment, and GPU driver/CUDA version in
-                        <code>results.json</code>. A moved model tag currently invalidates
-                        comparisons silently.</li>
-                    <li><strong>Uncertainty</strong> — confidence intervals or min–max for
-                        speed, and repeated samples for quality tasks instead of N=1.</li>
+                    <li><span class="chip accent">done</span> <strong>Reproducibility
+                        metadata</strong> — the report records model digests, and the run
+                        metadata records Python/platform, GPU driver/CUDA, and selected
+                        <code>OLLAMA_*</code> variables.</li>
+                    <li><span class="chip">partial</span> <strong>Uncertainty</strong> — speed
+                        min/max and within-case CV are reported; quality tasks still run once
+                        each.</li>
                     <li><strong>Harder coverage</strong> — repo-level and multi-file coding
                         tasks, multi-turn conversations, tool calling, and long-context
                         retrieval.</li>
@@ -335,8 +348,9 @@ Return only the complete HTML file in a single ```html code block. No explanatio
                         garbage.</li>
                     <li><strong>Run comparison</strong> — a <code>--compare results.json</code>
                         mode and a baseline/regression view across runs.</li>
-                    <li><strong>Degeneration metric</strong> — detect repetition loops, the
-                        failure mode that currently surfaces only as truncation.</li>
+                    <li><span class="chip accent">done</span> <strong>Degeneration
+                        metric</strong> — an 8-gram repetition ratio is recorded per task, with
+                        <code>max rep</code> in the report and a flag in the console.</li>
                     <li><strong>Composite semantics</strong> — make single-model scores
                         meaningful, or require at least two models for a score.</li>
                     <li><strong>Execution isolation</strong> — run generated code and browser

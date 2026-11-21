@@ -67,6 +67,19 @@ def words(text: str) -> list[str]:
     return re.findall(r"[A-Za-z0-9']+", strip_thinking(text))
 
 
+def repetition_ratio(text: str, n: int = 8) -> float:
+    """Fraction of repeated token n-grams; high values indicate a loop.
+
+    Uses whitespace tokens so it works for prose, code, and markup. Short
+    outputs return 0, since there is not enough text to judge.
+    """
+    tokens = re.findall(r"\S+", strip_thinking(text or ""))
+    if len(tokens) < n * 2:
+        return 0.0
+    grams = [tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)]
+    return 1.0 - len(set(grams)) / len(grams)
+
+
 def last_number(text: str) -> float | None:
     nums = re.findall(r"-?\d+(?:\.\d+)?", strip_thinking(text).replace(",", ""))
     return float(nums[-1]) if nums else None

@@ -91,7 +91,17 @@ def model_details(model: str) -> dict:
     ctx_candidates = [
         v for k, v in mi.items() if k.endswith(".context_length") and isinstance(v, (int, float))
     ]
+    digest = None
+    wanted = {model, model + ":latest"}
+    try:
+        for entry in api("/api/tags", timeout=30).get("models", []):
+            if entry.get("name") in wanted:
+                digest = entry.get("digest")
+                break
+    except RuntimeError:
+        pass
     return {
+        "digest": digest,
         "family": details.get("family"),
         "parameter_size": details.get("parameter_size"),
         "quantization": details.get("quantization_level"),
@@ -255,6 +265,23 @@ def median(values):
     return statistics.median(values) if values else None
 
 
+def cv(values):
+    """Coefficient of variation in percent, or None with fewer than two values."""
+    values = [v for v in values if v is not None]
+    if len(values) < 2:
+        return None
+    mean = statistics.mean(values)
+    return (statistics.stdev(values) / mean * 100.0) if mean else None
+
+
+def minmax(values):
+    values = [v for v in values if v is not None]
+    return {
+        "min": min(values) if values else None,
+        "max": max(values) if values else None,
+    }
+
+
 def bench_speed(model, args, think) -> dict:
     cases = [c.strip() for c in args.speed_cases.split(",") if c.strip() in SPEED_CASES]
     if not cases:
@@ -302,10 +329,14 @@ def bench_speed(model, args, think) -> dict:
         "prefill_tps": median([r["prefill_tps"] for r in runs]),
         "ttft_ms": median([r["ttft_ms"] for r in runs]),
         "wall_s": median([r["wall_s"] for r in runs]),
+        "decode_range": minmax([r["decode_tps"] for r in runs]),
+        "prefill_range": minmax([r["prefill_tps"] for r in runs]),
         "by_case": {
             case: {
                 "decode_tps": median([r["decode_tps"] for r in runs if r["case"] == case]),
+                "decode_cv": cv([r["decode_tps"] for r in runs if r["case"] == case]),
                 "prefill_tps": median([r["prefill_tps"] for r in runs if r["case"] == case]),
+                "prefill_cv": cv([r["prefill_tps"] for r in runs if r["case"] == case]),
                 "ttft_ms": median([r["ttft_ms"] for r in runs if r["case"] == case]),
                 "prompt_tokens": median([r["prompt_tokens"] for r in runs if r["case"] == case]),
             }
@@ -415,8 +446,9 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
         try:
             resp = generate(model, task["prompt"], options, timeout,
                             fmt=task.get("format"), think=think)
-            text = resp.get("response", "")
+            text = resp.get("response") or ""
             done_reason = resp.get("done_reason")
+            repetition = taskmod.repetition_ratio(text)
             truncated = done_reason == "length"
             output_tokens = resp.get("eval_count")
 
@@ -472,6 +504,7 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
                 "prompt_tokens": resp.get("prompt_eval_count"),
                 "output_tokens": output_tokens,
                 "output_bytes": len(text.encode("utf-8")),
+                "repetition": round(repetition, 3),
                 "done_reason": done_reason,
                 "truncated": truncated,
                 "browser": browser,
@@ -489,6 +522,7 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
                 "prompt_tokens": None,
                 "output_tokens": None,
                 "output_bytes": 0,
+                "repetition": 0.0,
                 "done_reason": None,
                 "truncated": False,
                 "browser": None,
@@ -497,6 +531,8 @@ def bench_quality(model, args, suite_tasks, think, response_dir: Path) -> dict:
         (model_dir / f"{task['id']}.txt").write_text(record["output"], encoding="utf-8")
         records.append(record)
         flags = " [truncated]" if record["truncated"] else ""
+        if record.get("repetition", 0.0) >= 0.5:
+            flags += f" [rep {100 * record['repetition']:.0f}%]"
         if record["browser"]:
             flags += f" [browser {record['browser']['status']}]"
         print(f" {'PASS' if record['passed'] else 'FAIL'}{flags}  {record['detail']}",
@@ -657,6 +693,23 @@ def build_report(results, args, version, host, suite_tasks, warnings) -> str:
         "",
     ]
 
+    model_rows = []
+    for r in sorted(results, key=lambda x: x.get("composite", 0), reverse=True):
+        meta = r.get("meta") or {}
+        digest = meta.get("digest") or "?"
+        if len(digest) > 23:
+            digest = digest[:23] + "…"
+        model_rows.append([
+            r["model"],
+            digest,
+            meta.get("parameter_size") or "?",
+            meta.get("quantization") or "?",
+            meta.get("max_ctx") or "?",
+        ])
+    lines += ["## Models", "",
+              md_table(["model", "digest", "params", "quant", "max ctx"],
+                       model_rows, ["---", "---", "---", "---", "---:"]), ""]
+
     if not args.speed_only:
         cats = sorted({c for r in results for c in (r.get("quality") or {}).get("categories", {})})
         rows = []
@@ -677,6 +730,7 @@ def build_report(results, args, version, host, suite_tasks, warnings) -> str:
             recs = (r.get("quality") or {}).get("records", [])
             if not recs:
                 continue
+            max_rep = max((rec.get("repetition") or 0.0 for rec in recs), default=0.0)
             cost_rows.append([
                 r["model"],
                 len(recs),
@@ -684,10 +738,15 @@ def build_report(results, args, version, host, suite_tasks, warnings) -> str:
                 fmt(sum(rec.get("latency_s") or 0 for rec in recs), 1),
                 sum(rec.get("output_bytes") or 0 for rec in recs),
                 sum(1 for rec in recs if rec.get("truncated")),
+                f"{100 * max_rep:.0f}%",
             ])
         lines += ["## Quality cost", "",
-                  md_table(["model", "tasks", "out tokens", "gen s", "out bytes", "trunc"],
-                           cost_rows, ["---", "---:", "---:", "---:", "---:", "---:"]), ""]
+                  md_table(["model", "tasks", "out tokens", "gen s", "out bytes", "trunc", "max rep"],
+                           cost_rows, ["---", "---:", "---:", "---:", "---:", "---:", "---:"]),
+                  "",
+                  "`max rep` is the highest 8-gram repetition ratio among a model's quality "
+                  "outputs; high values usually mean a loop. It is diagnostic, not a pass/fail "
+                  "rule.", ""]
 
     if not args.quality_only:
         cases = [c.strip() for c in args.speed_cases.split(",") if c.strip() in SPEED_CASES]
@@ -708,6 +767,24 @@ def build_report(results, args, version, host, suite_tasks, warnings) -> str:
         ]
         for case in cases:
             lines.append(f"- {case}: {SPEED_CASES[case][1]}")
+        lines.append("")
+
+        def cv_range(values):
+            values = [v for v in values if v is not None]
+            if not values:
+                return "-"
+            if len(values) == 1:
+                return f"{values[0]:.1f}%"
+            return f"{min(values):.1f}–{max(values):.1f}%"
+
+        lines += ["Within-case variance across repeats (coefficient of variation):", ""]
+        for r in sorted(results, key=lambda x: x.get("composite", 0), reverse=True):
+            by_case = (r.get("speed") or {}).get("by_case", {})
+            decode_cvs = [c.get("decode_cv") for c in by_case.values() if c.get("decode_cv") is not None]
+            prefill_cvs = [c.get("prefill_cv") for c in by_case.values() if c.get("prefill_cv") is not None]
+            if decode_cvs or prefill_cvs:
+                lines.append(f"- {r['model']}: decode {cv_range(decode_cvs)}, "
+                             f"prefill {cv_range(prefill_cvs)}")
         lines.append("")
 
     failures = []
@@ -751,8 +828,19 @@ def write_outputs(out_dir: Path, results, args, version, host, suite_tasks, warn
         "run": {
             "utc": datetime.now(timezone.utc).isoformat(),
             "host": host,
+            "python": platform.python_version(),
+            "platform": platform.platform(),
             "ollama": version,
             "url": OLLAMA,
+            "ollama_env": {
+                key: os.environ[key]
+                for key in (
+                    "OLLAMA_HOST", "OLLAMA_NUM_PARALLEL", "OLLAMA_MAX_LOADED_MODELS",
+                    "OLLAMA_FLASH_ATTENTION", "OLLAMA_KV_CACHE_TYPE",
+                    "OLLAMA_GPU_OVERHEAD", "OLLAMA_KEEP_ALIVE",
+                )
+                if key in os.environ
+            },
             "argv": args.argv,
             "suite": args.suite,
             "speed_cases": args.speed_cases,
@@ -774,10 +862,10 @@ def write_outputs(out_dir: Path, results, args, version, host, suite_tasks, warn
         writer = csv.writer(fh)
         writer.writerow(["model", "quality", "decode_tps", "prefill_tps", "ttft_ms",
                          "load_s", "vram_mib", "gpu_pct", "trunc", "composite", "pareto",
-                         "params", "quant", "suite", "num_ctx"])
+                         "params", "quant", "suite", "num_ctx", "digest"])
         for r in sorted(results, key=lambda x: x.get("composite", 0), reverse=True):
             if r.get("error"):
-                writer.writerow([r["model"], "ERROR"] + [""] * 13)
+                writer.writerow([r["model"], "ERROR"] + [""] * 14)
                 continue
             speed = r.get("speed") or {}
             quality = r.get("quality") or {}
@@ -791,6 +879,7 @@ def write_outputs(out_dir: Path, results, args, version, host, suite_tasks, warn
                 f"{r.get('composite', 0):.3f}",
                 "yes" if r.get("pareto") else "", meta.get("parameter_size") or "",
                 meta.get("quantization") or "", args.suite, args.num_ctx,
+                meta.get("digest") or "",
             ])
     return json_path, md_path, csv_path
 
@@ -924,10 +1013,17 @@ def host_summary() -> str:
     if shutil.which("nvidia-smi"):
         try:
             out = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                ["nvidia-smi", "--query-gpu=name,memory.total,driver_version",
+                 "--format=csv,noheader"],
                 capture_output=True, text=True, timeout=5,
             ).stdout.strip().splitlines()[0]
             parts.append(out)
+            header = subprocess.run(
+                ["nvidia-smi"], capture_output=True, text=True, timeout=5,
+            ).stdout
+            match = re.search(r"CUDA(?: UMD)? Version:\s*([0-9.]+)", header)
+            if match:
+                parts.append(f"CUDA {match.group(1)}")
         except (OSError, IndexError, subprocess.SubprocessError):
             pass
     return " | ".join(parts)
@@ -985,9 +1081,19 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--out", default=str(HERE / "results"))
     parser.add_argument("--label", default="")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--list-tasks", action="store_true",
+                        help="list quality tasks, categories, and suites")
     parser.add_argument("--list-installed", action="store_true")
     args = parser.parse_args(argv)
     args.argv = argv
+
+    if args.list_tasks:
+        print(f"{'id':<20} {'category':<12} {'suite':<6} {'weight':<6} note")
+        for task in taskmod.TASKS:
+            print(f"{task['id']:<20} {task['category']:<12} "
+                  f"{'quick' if task['quick'] else 'full':<6} "
+                  f"{task.get('weight', 1.0):<6} {task.get('note', '')}")
+        return 0
 
     if args.self_test:
         return self_test()
