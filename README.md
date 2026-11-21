@@ -6,35 +6,53 @@ easy to browse and reuse.
 
 **Website:** <https://yakov.khalinsky.com/ai-things/> — one page per asset.
 
-## Install (one line)
+## Install (one line, pick what you want)
+
+Nothing is installed unless you select it. Pass selections after `sh -s --`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+# one tool
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- ol
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- model-bench
+
+# one skill
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- code-smells
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- comfyui-prompt
+
+# shortcuts
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- tools
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- skills
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- all
 ```
 
-The installer runs in this order:
+Each run also installs the checkout under `~/.local/share/ai-things`. Tools go
+to `~/bin`; skills and commands go to `~/.claude`. Re-run the same selection to
+update, and restart Claude Code after installing skills.
 
-1. **Tools** — `ol` and `model-bench` into `~/bin`
-2. **Skills** — `code-smells` and `comfyui-prompt` into `~/.claude/skills` and
-   `~/.claude/commands`
-3. **Checkout** — the repo under `~/.local/share/ai-things`
+| Selection | Installs |
+| --- | --- |
+| `ol` | `~/bin/ol` |
+| `model-bench` | `~/bin/model-bench` |
+| `code-smells` | skill + `/code-smells` command |
+| `comfyui-prompt` | skill + `/comfyui-prompt`, `/comfyui-serve-output` |
+| `tools` | `ol` + `model-bench` |
+| `skills` | `code-smells` + `comfyui-prompt` |
+| `all` | everything above |
 
-Re-run the same command to update. Restart Claude Code after installing the
-skills. Options are environment variables:
+Options are environment variables:
 
 | Variable | Effect |
 | --- | --- |
+| `AI_THINGS_INSTALL` | Selections without arguments, e.g. `ol,model-bench` |
 | `AI_THINGS_REF` | Branch, tag, or commit to install (default `main`) |
 | `AI_THINGS_HOME` | Checkout location (default `~/.local/share/ai-things`) |
 | `AI_THINGS_BIN` | Where `ol` and `model-bench` go (default `~/bin`) |
-| `AI_THINGS_INSTALL_TOOLS=0` | Skip `ol` and `model-bench` |
-| `AI_THINGS_INSTALL_SKILLS=0` | Skip the `~/.claude` skills and commands |
 | `AI_THINGS_SOURCE` | Install from a local checkout instead of downloading |
 
 ```bash
-# skills only, pinned to a commit
-curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh \
-  | AI_THINGS_REF=<commit> AI_THINGS_INSTALL_TOOLS=0 sh
+# environment form, pinned to a commit (pin the script URL too for full reproducibility)
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/<commit>/install.sh \
+  | AI_THINGS_REF=<commit> AI_THINGS_INSTALL=model-bench sh
 ```
 
 From a checkout, `./scripts/install.sh` installs the skills into the current
@@ -47,7 +65,7 @@ self-contained **asset** that owns all of its primitives.
 
 ```
 ai-things/
-├── install.sh                # one-line installer: tools, then skills
+├── install.sh                # one-line installer; select tools/skills
 ├── tools/
 │   ├── ol/                   # Ollama agent launcher
 │   │   ├── ol

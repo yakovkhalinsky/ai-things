@@ -1,24 +1,34 @@
 #!/bin/sh
 # ai-things installer
 #
-#   curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+# Nothing is installed unless you pick it. Usage:
 #
-# Installs, in this order:
-#   1. tools      ol -> ~/bin/ol, model-bench -> ~/bin/model-bench
-#   2. skills     code-smells and comfyui-prompt into ~/.claude
-#   3. checkout   the repo under ~/.local/share/ai-things
+#   curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh \
+#     | sh -s -- <selection> [<selection>...]
 #
-# Re-run the same command to update. Options (set as environment variables):
+# Selections:
+#   ol              ollama agent launcher        -> ~/bin/ol
+#   model-bench     local model speed/quality    -> ~/bin/model-bench
+#   code-smells     Claude Code skill + command
+#   comfyui-prompt  Claude Code skill + commands
+#   tools           ol and model-bench
+#   skills          code-smells and comfyui-prompt
+#   all             everything above
+#
+# Examples:
+#   ... | sh -s -- ol
+#   ... | sh -s -- model-bench
+#   ... | sh -s -- ol model-bench
+#   ... | sh -s -- code-smells
+#   ... | sh -s -- all
+#
+# Or set AI_THINGS_INSTALL="ol,model-bench" instead of arguments.
+#
+# Other options:
 #   AI_THINGS_REF=main              git ref / branch / commit to install
 #   AI_THINGS_HOME=...              checkout location (default ~/.local/share/ai-things)
 #   AI_THINGS_BIN=~/bin             where ol and model-bench go
-#   AI_THINGS_INSTALL_TOOLS=0       skip tools
-#   AI_THINGS_INSTALL_SKILLS=0      skip ~/.claude skills and commands
 #   AI_THINGS_SOURCE=/path/to/repo  install from a local checkout (no download)
-#
-# Examples:
-#   curl -fsSL .../install.sh | AI_THINGS_INSTALL_SKILLS=0 sh
-#   curl -fsSL .../install.sh | AI_THINGS_REF=<commit> sh
 
 set -eu
 
@@ -26,13 +36,109 @@ REPO_SLUG="yakovkhalinsky/ai-things"
 REF="${AI_THINGS_REF:-main}"
 HOME_DIR="${AI_THINGS_HOME:-${XDG_DATA_HOME:-${HOME}/.local/share}/ai-things}"
 BIN_DIR="${AI_THINGS_BIN:-${HOME}/bin}"
-INSTALL_TOOLS="${AI_THINGS_INSTALL_TOOLS:-1}"
-INSTALL_SKILLS="${AI_THINGS_INSTALL_SKILLS:-1}"
 SOURCE="${AI_THINGS_SOURCE:-}"
 
 say() { printf '%s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+    cat <<'EOF'
+ai-things installer
+
+Nothing is installed unless you pick it:
+
+  ol              ollama agent launcher        -> ~/bin/ol
+  model-bench     local model speed/quality    -> ~/bin/model-bench
+  code-smells     Claude Code skill + command
+  comfyui-prompt  Claude Code skill + commands
+  tools           ol and model-bench
+  skills          code-smells and comfyui-prompt
+  all             everything above
+
+Usage:
+  curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh \
+    | sh -s -- <selection> [<selection>...]
+
+Examples:
+  ... | sh -s -- ol
+  ... | sh -s -- model-bench
+  ... | sh -s -- ol model-bench
+  ... | sh -s -- code-smells
+  ... | sh -s -- all
+
+Environment:
+  AI_THINGS_INSTALL="ol,model-bench"   selections without arguments
+  AI_THINGS_REF=main                   branch, tag, or commit
+  AI_THINGS_HOME=...                   checkout location
+  AI_THINGS_BIN=~/bin                  where ol and model-bench go
+  AI_THINGS_SOURCE=/path/to/repo       install from a local checkout
+EOF
+}
+
+SELECTED=""
+add_selection() {
+    case " ${SELECTED} " in
+        *" $1 "*) ;;
+        *) SELECTED="${SELECTED} $1" ;;
+    esac
+}
+
+select_item() {
+    case "$1" in
+        ol|model-bench|code-smells|comfyui-prompt)
+            add_selection "$1"
+            ;;
+        tools)
+            add_selection ol
+            add_selection model-bench
+            ;;
+        skills)
+            add_selection code-smells
+            add_selection comfyui-prompt
+            ;;
+        all)
+            add_selection ol
+            add_selection model-bench
+            add_selection code-smells
+            add_selection comfyui-prompt
+            ;;
+        *)
+            die "unknown selection: $1 (try --help)"
+            ;;
+    esac
+}
+
+wants() {
+    case " ${SELECTED} " in
+        *" $1 "*) return 0 ;;
+    esac
+    return 1
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help|help)
+            usage
+            exit 0
+            ;;
+    esac
+    case "$arg" in
+        --*) arg=${arg#--} ;;
+    esac
+    select_item "$arg"
+done
+
+if [ -z "${SELECTED}" ] && [ -n "${AI_THINGS_INSTALL:-}" ]; then
+    for item in $(printf '%s' "${AI_THINGS_INSTALL}" | tr ',' ' '); do
+        select_item "$item"
+    done
+fi
+
+if [ -z "${SELECTED}" ]; then
+    usage >&2
+    exit 1
+fi
 
 TMP=""
 cleanup() {
@@ -75,7 +181,7 @@ mkdir -p "$(dirname "${HOME_DIR}")"
 mv "${STAGE}" "${HOME_DIR}"
 say "Checkout: ${HOME_DIR}"
 
-# --- tools first -----------------------------------------------------------
+# --- tools -----------------------------------------------------------------
 
 install_model_bench() {
     target="${BIN_DIR}/model-bench"
@@ -98,34 +204,32 @@ EOF
 
 OL_OK=0
 MB_OK=0
-if [ "${INSTALL_TOOLS}" = "1" ]; then
+if wants ol || wants model-bench; then
     mkdir -p "${BIN_DIR}"
 
-    if command -v bash >/dev/null 2>&1; then
-        if OL_TARGET="${BIN_DIR}/ol" bash "${HOME_DIR}/tools/ol/install.sh"; then
-            OL_OK=1
+    if wants ol; then
+        if command -v bash >/dev/null 2>&1; then
+            if OL_TARGET="${BIN_DIR}/ol" bash "${HOME_DIR}/tools/ol/install.sh"; then
+                OL_OK=1
+            else
+                warn "ol install failed; continuing"
+            fi
         else
-            warn "ol install failed; continuing"
+            warn "bash not found; skipping ol"
         fi
-    else
-        warn "bash not found; skipping ol"
     fi
 
-    if command -v python3 >/dev/null 2>&1; then
-        if install_model_bench; then
-            MB_OK=1
+    if wants model-bench; then
+        if command -v python3 >/dev/null 2>&1; then
+            if install_model_bench; then
+                MB_OK=1
+            else
+                warn "model-bench install failed; continuing"
+            fi
         else
-            warn "model-bench install failed; continuing"
+            warn "python3 not found; skipping model-bench"
         fi
-    else
-        warn "python3 not found; skipping model-bench"
     fi
-else
-    say "Skipping tools (AI_THINGS_INSTALL_TOOLS=0)"
-fi
-TOOLS_OK=0
-if [ "${OL_OK}" = "1" ] || [ "${MB_OK}" = "1" ]; then
-    TOOLS_OK=1
 fi
 
 # ol's installer owns the ~/bin PATH line when it runs. Only add one if it is
@@ -162,7 +266,7 @@ ensure_path() {
     PATH_RC="${rc}"
 }
 PATH_RC=""
-if [ "${TOOLS_OK}" = "1" ]; then
+if [ "${OL_OK}" = "1" ] || [ "${MB_OK}" = "1" ]; then
     ensure_path
 fi
 
@@ -207,14 +311,17 @@ link_command() {
     fi
 }
 
-if [ "${INSTALL_SKILLS}" = "1" ]; then
+SKILLS_OK=0
+if wants code-smells; then
     link_skill code-smells "${HOME_DIR}/code-quality/code-smells"
-    link_skill comfyui-prompt "${HOME_DIR}/image-generation/comfyui-prompt"
     link_command code-smells.md "${HOME_DIR}/code-quality/code-smells/code-smells.md"
+    SKILLS_OK=1
+fi
+if wants comfyui-prompt; then
+    link_skill comfyui-prompt "${HOME_DIR}/image-generation/comfyui-prompt"
     link_command comfyui-prompt.md "${HOME_DIR}/image-generation/comfyui-prompt/comfyui-prompt.md"
     link_command comfyui-serve-output.md "${HOME_DIR}/image-generation/comfyui-prompt/command-serve-output.md"
-else
-    say "Skipping skills (AI_THINGS_INSTALL_SKILLS=0)"
+    SKILLS_OK=1
 fi
 
 say ""
@@ -225,12 +332,16 @@ fi
 if [ "${MB_OK}" = "1" ]; then
     say "  model-bench: ${BIN_DIR}/model-bench"
 fi
-if [ "${INSTALL_SKILLS}" = "1" ]; then
-    say "  skills:  ~/.claude/skills/{code-smells,comfyui-prompt}"
-    say "  commands: /code-smells, /comfyui-prompt, /comfyui-serve-output"
-    say "  restart Claude Code to pick them up."
+if wants code-smells; then
+    say "  skill:       code-smells, /code-smells"
 fi
-say "Update any time by re-running this installer."
+if wants comfyui-prompt; then
+    say "  skill:       comfyui-prompt, /comfyui-prompt, /comfyui-serve-output"
+fi
+if [ "${SKILLS_OK}" = "1" ]; then
+    say "  restart Claude Code to pick up the skills."
+fi
+say "Update by re-running the same selection."
 if [ -n "${PATH_RC}" ]; then
     say "Reload your shell: source ${PATH_RC}"
 fi

@@ -178,8 +178,8 @@ window.
 ## Install
 
 ```bash
-# install ol (and model-bench) into ~/bin, user-level skills too
-curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+# install ol into ~/bin
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- ol
 
 # or install just ol from a checkout
 ./tools/ol/install.sh

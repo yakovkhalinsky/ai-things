@@ -76,10 +76,11 @@
                 </ul>
 
                 <h2>Install</h2>
-                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh</code></pre>
+                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- model-bench</code></pre>
                 <p>
-                    Installs <code>model-bench</code> into <code>~/bin</code> (alongside
-                    <code>ol</code>). From a checkout, replace <code>model-bench</code> with
+                    Installs <code>model-bench</code> into <code>~/bin</code>. Install
+                    <code>ol</code> separately with <code>sh -s -- ol</code> if you want it.
+                    From a checkout, replace <code>model-bench</code> with
                     <code>./bench.py</code> in the examples below.
                 </p>
                 <p class="muted">
@@ -166,6 +167,35 @@ qwen2.5:1.5b       75%       130.9         7902    3.26      1115    100      0 
                         <a href="https://github.com/yakovkhalinsky/ai-things/blob/main/tools/model-bench/models.txt">models.txt</a>
                         <span class="path">suggested models for this GPU class</span>
                     </li>
+                </ul>
+
+                <h2>Planned improvements</h2>
+                <p>
+                    Known gaps, roughly in priority order. None of these are implemented yet;
+                    the current tool is strongest as a per-machine triage harness.
+                </p>
+                <ul>
+                    <li><strong>Reproducibility metadata</strong> — record the model digest,
+                        Ollama environment, and GPU driver/CUDA version in
+                        <code>results.json</code>. A moved model tag currently invalidates
+                        comparisons silently.</li>
+                    <li><strong>Uncertainty</strong> — confidence intervals or min–max for
+                        speed, and repeated samples for quality tasks instead of N=1.</li>
+                    <li><strong>Harder coverage</strong> — repo-level and multi-file coding
+                        tasks, multi-turn conversations, tool calling, and long-context
+                        retrieval.</li>
+                    <li><strong>Adversarial self-test</strong> — fenced, prose-wrapped,
+                        truncated, and near-miss outputs, not just a reference answer and
+                        garbage.</li>
+                    <li><strong>Run comparison</strong> — a <code>--compare results.json</code>
+                        mode and a baseline/regression view across runs.</li>
+                    <li><strong>Degeneration metric</strong> — detect repetition loops, the
+                        failure mode that currently surfaces only as truncation.</li>
+                    <li><strong>Composite semantics</strong> — make single-model scores
+                        meaningful, or require at least two models for a score.</li>
+                    <li><strong>Execution isolation</strong> — run generated code and browser
+                        checks in a container, and drop the headless browser's
+                        <code>--no-sandbox</code>.</li>
                 </ul>
             </div>
         </div>

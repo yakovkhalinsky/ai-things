@@ -3,7 +3,7 @@
 # .claude/. Usage: ./scripts/install.sh
 #
 # For a user-level install into ~/.claude, use the root one-liner instead:
-#   curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- skills
 #
 # This script is for systems where the symlinks in .claude/ don't work
 # (e.g. Windows without symlink support), or when you want project-local files.

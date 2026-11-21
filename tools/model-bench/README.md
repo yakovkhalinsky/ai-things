@@ -17,11 +17,12 @@ quality ->  15 deterministic tasks: JSON, instruction following, code (unit
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- model-bench
 ```
 
-This puts `model-bench` in `~/bin` (alongside `ol`). The rest of this README
-uses `./bench.py`; from an installed copy use `model-bench` instead.
+This puts `model-bench` in `~/bin`; install `ol` separately if you want it.
+The rest of this README uses `./bench.py`; from an installed copy use
+`model-bench` instead.
 
 ## Requirements
 
@@ -217,3 +218,25 @@ the task is actually testing. A grader may return a third element, a score in
   noise and repeat before chasing them.
 - Cloud models (`:cloud`) technically run but their "speed" is network-bound,
   not this computer's; don't mix them into a local comparison.
+
+## Planned improvements
+
+Known gaps, roughly in priority order. None are implemented yet; use the tool as
+a per-machine triage harness first.
+
+- **Reproducibility metadata** — record model digest, Ollama environment, and
+  GPU driver/CUDA version in `results.json`; a moved tag currently invalidates
+  comparisons silently.
+- **Uncertainty** — confidence intervals or min–max for speed, and repeated
+  samples for quality tasks instead of N=1.
+- **Harder coverage** — repo-level/multi-file coding, multi-turn conversations,
+  tool calling, and long-context retrieval.
+- **Adversarial self-test** — fenced, prose-wrapped, truncated, and near-miss
+  outputs, not just a reference answer and garbage.
+- **Run comparison** — a `--compare results.json` mode and a baseline view.
+- **Degeneration metric** — detect repetition loops, which currently surface
+  only as truncation.
+- **Composite semantics** — make single-model scores meaningful, or require at
+  least two models for a score.
+- **Execution isolation** — containerise generated code and browser checks, and
+  drop the headless browser's `--no-sandbox`.

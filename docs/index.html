@@ -52,25 +52,35 @@
             <div class="container">
                 <h2>Install</h2>
                 <p class="section-note">
-                    Tools first, then the Claude Code skills and commands. Re-run the same
-                    command to update.
+                    Pick what you want; nothing is installed by default. Re-run the same
+                    selection to update.
                 </p>
-                <pre><code>curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh</code></pre>
+                <pre><code># tools
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- ol
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- model-bench
+
+# skills
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- code-smells
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- comfyui-prompt
+
+# or everything
+curl -fsSL https://raw.githubusercontent.com/yakovkhalinsky/ai-things/main/install.sh | sh -s -- all</code></pre>
                 <ul>
                     <li><code>ol</code> and <code>model-bench</code> → <code>~/bin</code></li>
                     <li><code>code-smells</code> and <code>comfyui-prompt</code> →
                         <code>~/.claude/skills</code> and <code>~/.claude/commands</code></li>
                     <li>the checkout → <code>~/.local/share/ai-things</code></li>
+                    <li><code>tools</code> (both tools) and <code>skills</code> (both
+                        skills) are shortcuts; <code>all</code> installs everything</li>
                 </ul>
                 <p class="muted">
-                    Restart Claude Code after installing so it picks up the user-level
-                    skills. Skip either half with <code>AI_THINGS_INSTALL_TOOLS=0</code> or
-                    <code>AI_THINGS_INSTALL_SKILLS=0</code>; pin a ref with
-                    <code>AI_THINGS_REF=&lt;commit&gt;</code>.
+                    Restart Claude Code after installing skills. Prefer environment
+                    variables? Set <code>AI_THINGS_INSTALL="ol,model-bench"</code> instead
+                    of arguments; pin a ref with <code>AI_THINGS_REF=&lt;commit&gt;</code>.
                 </p>
                 <p class="muted">
                     Prefer a checkout? <code>git clone … &amp;&amp; ./scripts/install.sh</code>
-                    installs the same skills into the current project's
+                    installs the skills into the current project's
                     <code>.claude/</code> instead.
                 </p>
             </div>
